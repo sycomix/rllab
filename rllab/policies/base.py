@@ -42,7 +42,7 @@ class Policy(Parameterized):
         Return keys for the information related to the policy's state when taking an action.
         :return:
         """
-        return list()
+        return []
 
     def terminate(self):
         """

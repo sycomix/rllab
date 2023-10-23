@@ -67,11 +67,7 @@ class GaussianMLPRegressor(LasagnePowered):
         self._subsample_factor = subsample_factor
 
         if optimizer is None:
-            if use_trust_region:
-                optimizer = PenaltyLbfgsOptimizer()
-            else:
-                optimizer = LbfgsOptimizer()
-
+            optimizer = PenaltyLbfgsOptimizer() if use_trust_region else LbfgsOptimizer()
         self._optimizer = optimizer
 
         if mean_network is None:
@@ -157,7 +153,7 @@ class GaussianMLPRegressor(LasagnePowered):
         ))
 
         loss = - \
-            TT.mean(dist.log_likelihood_sym(
+                TT.mean(dist.log_likelihood_sym(
                 normalized_ys_var, normalized_dist_info_vars))
 
         self._f_predict = compile_function([xs_var], means_var)
@@ -210,10 +206,7 @@ class GaussianMLPRegressor(LasagnePowered):
                 np.mean(ys, axis=0, keepdims=True).astype(theano.config.floatX))
             self._y_std_var.set_value(
                 (np.std(ys, axis=0, keepdims=True) + 1e-8).astype(theano.config.floatX))
-        if self._name:
-            prefix = self._name + "_"
-        else:
-            prefix = ""
+        prefix = f"{self._name}_" if self._name else ""
         # FIXME: needs batch computation to avoid OOM.
         loss_before, loss_after, mean_kl, batch_count = 0., 0., 0., 0
         for batch in iterate_minibatches_generic(input_lst=[xs, ys], batchsize=self._batchsize, shuffle=True):
@@ -231,11 +224,11 @@ class GaussianMLPRegressor(LasagnePowered):
             if self._use_trust_region:
                 mean_kl += self._optimizer.constraint_val(inputs)
 
-        logger.record_tabular(prefix + 'LossBefore', loss_before / batch_count)
-        logger.record_tabular(prefix + 'LossAfter', loss_after / batch_count)
-        logger.record_tabular(prefix + 'dLoss', loss_before - loss_after / batch_count)
+        logger.record_tabular(f'{prefix}LossBefore', loss_before / batch_count)
+        logger.record_tabular(f'{prefix}LossAfter', loss_after / batch_count)
+        logger.record_tabular(f'{prefix}dLoss', loss_before - loss_after / batch_count)
         if self._use_trust_region:
-            logger.record_tabular(prefix + 'MeanKL', mean_kl / batch_count)
+            logger.record_tabular(f'{prefix}MeanKL', mean_kl / batch_count)
 
     def predict(self, xs):
         """

@@ -58,15 +58,11 @@ class ReplayPool(Serializable):
         self.concat_length = concat_length
         self.observation_dtype = observation_dtype
         self.action_dtype = action_dtype
-        if rng:
-            self.rng = rng
-        else:
-            self.rng = np.random.RandomState()
-
+        self.rng = rng if rng else np.random.RandomState()
         if not concat_observations:
             assert concat_length == 1, \
-                "concat_length must be set to 1 if not concatenating " \
-                "observations"
+                    "concat_length must be set to 1 if not concatenating " \
+                    "observations"
 
         self.bottom = 0
         self.top = 0
@@ -140,11 +136,10 @@ class ReplayPool(Serializable):
         """
         Return the most recent sample (concatenated observations if needed).
         """
-        if self.concat_observations:
-            indexes = np.arange(self.top - self.concat_length, self.top)
-            return self.observations.take(indexes, axis=0, mode='wrap')
-        else:
+        if not self.concat_observations:
             return self.observations[self.top - 1]
+        indexes = np.arange(self.top - self.concat_length, self.top)
+        return self.observations.take(indexes, axis=0, mode='wrap')
 
     def concat_state(self, state):
         """Return a concatenated state, using the last concat_length -
@@ -158,8 +153,9 @@ class ReplayPool(Serializable):
                 (self.concat_length,) + self.observation_shape,
                 dtype=floatX
             )
-            concat_state[0:self.concat_length - 1] = \
-                self.observations.take(indexes, axis=0, mode='wrap')
+            concat_state[: self.concat_length - 1] = self.observations.take(
+                indexes, axis=0, mode='wrap'
+            )
             concat_state[-1] = state
             return concat_state
         else:
@@ -222,7 +218,7 @@ class ReplayPool(Serializable):
             # will actually be the first frame of a new episode, which
             # the Q learner recognizes and handles correctly during
             # training by zeroing the discounted future reward estimate.
-            if np.any(self.terminals.take(initial_indices[0:-1], mode='wrap')):
+            if np.any(self.terminals.take(initial_indices[:-1], mode='wrap')):
                 continue
             # do not pick samples which terminated because of horizon
             # if np.any(self.horizon_terminals.take(initial_indices[0:-1],

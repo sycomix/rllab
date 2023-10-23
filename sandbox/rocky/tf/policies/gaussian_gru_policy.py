@@ -39,11 +39,7 @@ class GaussianGRUPolicy(StochasticPolicy, LayersPowered, Serializable):
             obs_dim = env_spec.observation_space.flat_dim
             action_dim = env_spec.action_space.flat_dim
 
-            if state_include_action:
-                input_dim = obs_dim + action_dim
-            else:
-                input_dim = obs_dim
-
+            input_dim = obs_dim + action_dim if state_include_action else obs_dim
             l_input = L.InputLayer(
                 shape=(None, None, input_dim),
                 name="input"

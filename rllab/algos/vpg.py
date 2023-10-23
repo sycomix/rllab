@@ -56,18 +56,13 @@ class VPG(BatchPolopt, Serializable):
         dist = self.policy.distribution
         old_dist_info_vars = {
             k: ext.new_tensor(
-                'old_%s' % k,
-                ndim=2 + is_recurrent,
-                dtype=theano.config.floatX
-            ) for k in dist.dist_info_keys
-            }
+                f'old_{k}', ndim=2 + is_recurrent, dtype=theano.config.floatX
+            )
+            for k in dist.dist_info_keys
+        }
         old_dist_info_vars_list = [old_dist_info_vars[k] for k in dist.dist_info_keys]
 
-        if is_recurrent:
-            valid_var = TT.matrix('valid')
-        else:
-            valid_var = None
-
+        valid_var = TT.matrix('valid') if is_recurrent else None
         state_info_vars = {
             k: ext.new_tensor(
                 k,

@@ -38,7 +38,7 @@ class LbfgsOptimizer(Serializable):
             return [loss.astype('float64'), flat_grad.astype('float64')]
 
         if extra_inputs is None:
-            extra_inputs = list()
+            extra_inputs = []
 
         self._opt_fun = lazydict(
             f_loss=lambda: compile_function(inputs + extra_inputs, loss),
@@ -50,14 +50,14 @@ class LbfgsOptimizer(Serializable):
 
     def loss(self, inputs, extra_inputs=None):
         if extra_inputs is None:
-            extra_inputs = list()
+            extra_inputs = []
         return self._opt_fun["f_loss"](*(list(inputs) + list(extra_inputs)))
 
     def optimize(self, inputs, extra_inputs=None):
         f_opt = self._opt_fun["f_opt"]
 
         if extra_inputs is None:
-            extra_inputs = list()
+            extra_inputs = []
 
         def f_opt_wrapper(flat_params):
             self._target.set_param_values(flat_params, trainable=True)

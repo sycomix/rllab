@@ -40,12 +40,11 @@ class Walker2DEnv(MujocoEnv, Serializable):
         lb, ub = self.action_bounds
         scaling = (ub - lb) * 0.5
         ctrl_cost = 0.5 * self.ctrl_cost_coeff * \
-            np.sum(np.square(action / scaling))
+                np.sum(np.square(action / scaling))
         forward_reward = self.get_body_comvel("torso")[0]
         reward = forward_reward - ctrl_cost
         qpos = self.model.data.qpos
-        done = not (qpos[0] > 0.8 and qpos[0] < 2.0
-                    and qpos[2] > -1.0 and qpos[2] < 1.0)
+        done = qpos[0] <= 0.8 or qpos[0] >= 2.0 or qpos[2] <= -1.0 or qpos[2] >= 1.0
         return Step(next_obs, reward, done)
 
     @overrides

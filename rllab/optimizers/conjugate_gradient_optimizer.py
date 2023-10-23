@@ -26,7 +26,7 @@ class PerlmutterHvp(Serializable):
 
         constraint_grads = theano.grad(
             f, wrt=params, disconnected_inputs='warn')
-        xs = tuple([ext.new_tensor_like("%s x" % p.name, p) for p in params])
+        xs = tuple(ext.new_tensor_like(f"{p.name} x", p) for p in params)
 
         def Hx_plain():
             Hx_plain_splits = TT.grad(
@@ -173,11 +173,7 @@ class ConjugateGradientOptimizer(Serializable):
         """
 
         inputs = tuple(inputs)
-        if extra_inputs is None:
-            extra_inputs = tuple()
-        else:
-            extra_inputs = tuple(extra_inputs)
-
+        extra_inputs = tuple() if extra_inputs is None else tuple(extra_inputs)
         constraint_term, constraint_value = leq_constraint
 
         params = target.get_params(trainable=True)
@@ -240,7 +236,7 @@ class ConjugateGradientOptimizer(Serializable):
                 n_samples = len(inputs_grouped[0])
                 inds = np.random.choice(
                     n_samples, int(n_samples * self._subsample_factor), replace=False)
-                subsample_inputs += tuple([x[inds] for x in inputs_grouped])
+                subsample_inputs += tuple(x[inds] for x in inputs_grouped)
         else:
             subsample_inputs = inputs
 
@@ -283,13 +279,11 @@ class ConjugateGradientOptimizer(Serializable):
             if np.isnan(loss):
                 logger.log("Violated because loss is NaN")
             if np.isnan(constraint_val):
-                logger.log("Violated because constraint %s is NaN" %
-                           self._constraint_name)
+                logger.log(f"Violated because constraint {self._constraint_name} is NaN")
             if loss >= loss_before:
                 logger.log("Violated because loss not improving")
             if constraint_val >= self._max_constraint_val:
-                logger.log(
-                    "Violated because constraint %s is violated" % self._constraint_name)
+                logger.log(f"Violated because constraint {self._constraint_name} is violated")
             self._target.set_param_values(prev_param, trainable=True)
         logger.log("backtrack iters: %d" % n_iter)
         logger.log("computing loss after")

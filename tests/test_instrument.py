@@ -48,6 +48,8 @@ with such.A("instrument") as it:
         vg.add("key3", lambda key2: [1] if key2 else [1, 2])
         it.assertEqual(len(vg.variants()), 9)
 
+
+
         class VG(instrument.VariantGenerator):
 
             @instrument.variant
@@ -61,11 +63,10 @@ with such.A("instrument") as it:
 
             @instrument.variant
             def key3(self, key2):
-                if key2:
-                    yield 1
-                else:
-                    yield 1
+                yield 1
+                if not key2:
                     yield 2
+
 
         it.assertEqual(len(VG().variants()), 9)
 

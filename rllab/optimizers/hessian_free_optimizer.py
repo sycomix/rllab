@@ -32,7 +32,7 @@ class HessianFreeOptimizer(Serializable):
         self._target = target
 
         if extra_inputs is None:
-            extra_inputs = list()
+            extra_inputs = []
 
         self._hf_optimizer = hf_optimizer(
             _p=target.get_params(trainable=True),
@@ -47,13 +47,13 @@ class HessianFreeOptimizer(Serializable):
 
     def loss(self, inputs, extra_inputs=None):
         if extra_inputs is None:
-            extra_inputs = list()
+            extra_inputs = []
         return self._opt_fun["f_loss"](*(inputs + extra_inputs))
 
     def optimize(self, inputs, extra_inputs=None):
 
         if extra_inputs is None:
-            extra_inputs = list()
+            extra_inputs = []
 
 #         import ipdb; ipdb.set_trace()
         dataset = BatchDataset(inputs=inputs, batch_size=self._batch_size, extra_inputs=extra_inputs)

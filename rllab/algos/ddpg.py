@@ -212,7 +212,7 @@ class DDPG(RLAlgorithm):
         for epoch in range(self.n_epochs):
             logger.push_prefix('epoch #%d | ' % epoch)
             logger.log("Training started")
-            for epoch_itr in pyprind.prog_bar(range(self.epoch_length)):
+            for _ in pyprind.prog_bar(range(self.epoch_length)):
                 # Execute policy
                 if terminal:  # or path_length > self.max_path_length:
                     # Note that if the last time step ends an episode, the very
@@ -241,7 +241,7 @@ class DDPG(RLAlgorithm):
                 observation = next_observation
 
                 if pool.size >= self.min_pool_size:
-                    for update_itr in range(self.n_updates_per_sample):
+                    for _ in range(self.n_updates_per_sample):
                         # Train policy
                         batch = pool.random_batch(self.batch_size)
                         self.do_training(itr, batch)
@@ -284,18 +284,28 @@ class DDPG(RLAlgorithm):
         )
         yvar = TT.vector('ys')
 
-        qf_weight_decay_term = 0.5 * self.qf_weight_decay * \
-                               sum([TT.sum(TT.square(param)) for param in
-                                    self.qf.get_params(regularizable=True)])
+        qf_weight_decay_term = (
+            0.5
+            * self.qf_weight_decay
+            * sum(
+                TT.sum(TT.square(param))
+                for param in self.qf.get_params(regularizable=True)
+            )
+        )
 
         qval = self.qf.get_qval_sym(obs, action)
 
         qf_loss = TT.mean(TT.square(yvar - qval))
         qf_reg_loss = qf_loss + qf_weight_decay_term
 
-        policy_weight_decay_term = 0.5 * self.policy_weight_decay * \
-                                   sum([TT.sum(TT.square(param))
-                                        for param in self.policy.get_params(regularizable=True)])
+        policy_weight_decay_term = (
+            0.5
+            * self.policy_weight_decay
+            * sum(
+                TT.sum(TT.square(param))
+                for param in self.policy.get_params(regularizable=True)
+            )
+        )
         policy_qval = self.qf.get_qval_sym(
             obs, self.policy.get_action_sym(obs),
             deterministic=True

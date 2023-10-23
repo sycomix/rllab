@@ -59,7 +59,7 @@ class Box(Space):
         return xs.reshape((xs.shape[0],) + self.shape)
 
     def __repr__(self):
-        return "Box" + str(self.shape)
+        return f"Box{str(self.shape)}"
 
     def __eq__(self, other):
         return isinstance(other, Box) and np.allclose(self.low, other.low) and \

@@ -37,9 +37,8 @@ def _worker_start():
                 param_values, max_length = msgs['demo']
                 policy.set_param_values(param_values)
                 rollout(env, policy, max_path_length=max_length, animated=True, speedup=5)
-            else:
-                if max_length:
-                    rollout(env, policy, max_path_length=max_length, animated=True, speedup=5)
+            elif max_length:
+                rollout(env, policy, max_path_length=max_length, animated=True, speedup=5)
     except KeyboardInterrupt:
         pass
 

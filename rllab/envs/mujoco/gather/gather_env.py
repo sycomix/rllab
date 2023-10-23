@@ -279,7 +279,7 @@ class GatherEnv(ProxyEnv, Serializable):
             else:
                 new_objs.append(obj)
         self.objects = new_objs
-        done = len(self.objects) == 0
+        done = not self.objects
         return Step(self.get_current_obs(), reward, done, **info)
 
     def get_readings(self):  # equivalent to get_current_maze_obs in maze_env.py
@@ -409,16 +409,14 @@ class GatherEnv(ProxyEnv, Serializable):
     def log_diagnostics(self, paths, log_prefix='Gather', *args, **kwargs):
         # we call here any logging related to the gather, strip the maze obs and call log_diag with the stripped paths
         # we need to log the purely gather reward!!
-        with logger.tabular_prefix(log_prefix + '_'):
+        with logger.tabular_prefix(f'{log_prefix}_'):
             gather_undiscounted_returns = [sum(path['env_infos']['outer_rew']) for path in paths]
             logger.record_tabular_misc_stat('Return', gather_undiscounted_returns, placement='front')
         stripped_paths = []
         for path in paths:
-            stripped_path = {}
-            for k, v in path.items():
-                stripped_path[k] = v
+            stripped_path = dict(path.items())
             stripped_path['observations'] = \
-                stripped_path['observations'][:, :self.wrapped_env.observation_space.flat_dim]
+                    stripped_path['observations'][:, :self.wrapped_env.observation_space.flat_dim]
             #  this breaks if the obs of the robot are d>1 dimensional (not a vector)
             stripped_paths.append(stripped_path)
         with logger.tabular_prefix('wrapped_'):

@@ -39,8 +39,9 @@ class Choice(Type):
     def from_str(self, s):
         if s in self._options:
             return s
-        raise ValueError("Unexpected value %s: must be one of %s" %
-                         (s, ", ".join(self._options)))
+        raise ValueError(
+            f'Unexpected value {s}: must be one of {", ".join(self._options)}'
+        )
 
 
 class List(Type):
@@ -82,8 +83,7 @@ class Tuple(Type):
             raise ValueError(
                 "Length mismatch: expected a tuple of length %d; got %s instead" %
                 (len(self.elem_types), s))
-        return tuple([typ.from_str(seg)
-                      for typ, seg in zip(self.elem_types, segments)])
+        return tuple(typ.from_str(seg) for typ, seg in zip(self.elem_types, segments))
 
 
 class Either(Type):
@@ -119,7 +119,7 @@ class Angle(Type):
 class Bool(Type):
 
     def from_str(self, s):
-        return s.lower() == "true" or s.lower() == "1"
+        return s.lower() in ["true", "1"]
 
 
 Point2D = lambda: Tuple(Float(), Float())

@@ -10,7 +10,7 @@ class Product(Space):
             components = components[0]
         self._components = tuple(components)
         dtypes = [c.dtype for c in components]
-        if len(dtypes) > 0 and hasattr(dtypes[0], "as_numpy_dtype"):
+        if dtypes and hasattr(dtypes[0], "as_numpy_dtype"):
             dtypes = [d.as_numpy_dtype for d in dtypes]
         self._common_dtype = np.core.numerictypes.find_common_type([], dtypes)
 
@@ -56,8 +56,7 @@ class Product(Space):
         dims = [c.flat_dim for c in self._components]
         flat_xs = np.split(xs, np.cumsum(dims)[:-1], axis=-1)
         unflat_xs = [c.unflatten_n(xi) for c, xi in zip(self.components, flat_xs)]
-        unflat_xs_grouped = list(zip(*unflat_xs))
-        return unflat_xs_grouped
+        return list(zip(*unflat_xs))
 
     def __eq__(self, other):
         if not isinstance(other, Product):

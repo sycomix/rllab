@@ -61,8 +61,7 @@ class Box2DEnv(Env):
         self._cached_coms = {}
 
     def model_path(self, file_name):
-        return osp.abspath(osp.join(osp.dirname(__file__),
-                                    'models/%s' % file_name))
+        return osp.abspath(osp.join(osp.dirname(__file__), f'models/{file_name}'))
 
     def _set_state(self, state):
         splitted = np.array(state).reshape((-1, 6))
@@ -85,14 +84,17 @@ class Box2DEnv(Env):
 
     @property
     def _state(self):
-        s = []
-        for body in self.world.bodies:
-            s.append(np.concatenate([
-                list(body.position),
-                [body.angle],
-                list(body.linearVelocity),
-                [body.angularVelocity]
-            ]))
+        s = [
+            np.concatenate(
+                [
+                    list(body.position),
+                    [body.angle],
+                    list(body.linearVelocity),
+                    [body.angularVelocity],
+                ]
+            )
+            for body in self.world.bodies
+        ]
         return np.concatenate(s)
 
     @property
@@ -136,10 +138,7 @@ class Box2DEnv(Env):
                 joint = find_joint(self.world, ctrl.joint)
                 joint.motorEnabled = True
                 # forces the maximum allowed torque to be taken
-                if act > 0:
-                    joint.motorSpeed = 1e5
-                else:
-                    joint.motorSpeed = -1e5
+                joint.motorSpeed = 1e5 if act > 0 else -1e5
                 joint.maxMotorTorque = abs(act)
             else:
                 raise NotImplementedError
@@ -222,16 +221,15 @@ class Box2DEnv(Env):
         """
         raw_obs = self.get_raw_obs()
         noisy_obs = self._inject_obs_noise(raw_obs)
-        if self.position_only:
-            return self._filter_position(noisy_obs)
-        return noisy_obs
+        return self._filter_position(noisy_obs) if self.position_only else noisy_obs
 
     def _get_position_ids(self):
         if self._position_ids is None:
-            self._position_ids = []
-            for idx, state in enumerate(self.extra_data.states):
-                if state.typ in ["xpos", "ypos", "apos", "dist", "angle"]:
-                    self._position_ids.append(idx)
+            self._position_ids = [
+                idx
+                for idx, state in enumerate(self.extra_data.states)
+                if state.typ in ["xpos", "ypos", "apos", "dist", "angle"]
+            ]
         return self._position_ids
 
     def get_raw_obs(self):

@@ -21,11 +21,10 @@ color2num = dict(
 
 
 def colorize(string, color, bold=False, highlight=False):
-    attr = []
     num = color2num[color]
     if highlight:
         num += 10
-    attr.append(str(num))
+    attr = [str(num)]
     if bold:
         attr.append('1')
     return '\x1b[%sm%s\x1b[0m' % (';'.join(attr), string)
@@ -35,9 +34,7 @@ def mkdir_p(path):
     try:
         os.makedirs(path)
     except OSError as exc:  # Python >2.5
-        if exc.errno == errno.EEXIST and os.path.isdir(path):
-            pass
-        else:
+        if exc.errno != errno.EEXIST or not os.path.isdir(path):
             raise
 
 
@@ -127,7 +124,7 @@ def tweakval(val, identifier):
     for k, v in args.items():
         stripped = k.replace('-', '_')
         if stripped == identifier:
-            log('replacing %s in %s with %s' % (stripped, str(val), str(v)))
+            log(f'replacing {stripped} in {str(val)} with {str(v)}')
             return type(val)(v)
     return val
 
@@ -145,7 +142,7 @@ def tweakfun(fun, alt=None):
     if alt:
         cmd_prefix = alt
     elif cls:
-        cmd_prefix = cls + '.' + method_name
+        cmd_prefix = f'{cls}.{method_name}'
     else:
         cmd_prefix = method_name
     cmd_prefix = cmd_prefix.lower()
@@ -169,19 +166,20 @@ def tweakfun(fun, alt=None):
         if k.startswith(cmd_prefix):
             stripped = k[len(cmd_prefix):].replace('-', '_')
             if stripped in meta:
-                log('replacing %s in %s with %s' % (stripped, str(fun), str(v)))
+                log(f'replacing {stripped} in {str(fun)} with {str(v)}')
                 replaced_kwargs[stripped] = meta[stripped](v)
             elif stripped not in argspec.args:
-                raise ValueError(
-                    '%s is not an explicit parameter of %s' % (stripped, str(fun)))
+                raise ValueError(f'{stripped} is not an explicit parameter of {str(fun)}')
             elif stripped not in defaults:
                 raise ValueError(
-                    '%s does not have a default value in method %s' % (stripped, str(fun)))
+                    f'{stripped} does not have a default value in method {str(fun)}'
+                )
             elif defaults[stripped] is None:
                 raise ValueError(
-                    'Cannot infer type of %s in method %s from None value' % (stripped, str(fun)))
+                    f'Cannot infer type of {stripped} in method {str(fun)} from None value'
+                )
             else:
-                log('replacing %s in %s with %s' % (stripped, str(fun), str(v)))
+                log(f'replacing {stripped} in {str(fun)} with {str(v)}')
                 # TODO more proper conversions
                 replaced_kwargs[stripped] = type(defaults[stripped])(v)
 
@@ -189,6 +187,7 @@ def tweakfun(fun, alt=None):
         all_kw = dict(list(zip(argspec[0], args)) +
                       list(kwargs.items()) + list(replaced_kwargs.items()))
         return fun(**all_kw)
+
     return tweaked
 
 
@@ -211,7 +210,7 @@ def query_yes_no(question, default="yes"):
     elif default == "no":
         prompt = " [y/N] "
     else:
-        raise ValueError("invalid default answer: '%s'" % default)
+        raise ValueError(f"invalid default answer: '{default}'")
 
     while True:
         sys.stdout.write(question + prompt)

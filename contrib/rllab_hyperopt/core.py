@@ -38,8 +38,7 @@ class S3SyncThread(threading.Thread):
             aws s3 sync {remote_dir} {local_dir} --exclude '*stdout.log' --exclude '*stdouterr.log' --content-type "UTF-8"
         """.format(local_dir=local_dir, remote_dir=remote_dir))
         while True:
-            fail = os.system(command)
-            if fail:
+            if fail := os.system(command):
                 warnings.warn("Problem running the s3 sync command. You might want to run ./scripts/sync_s3.py manually in a shell to inspect.")
             if self.stopped():
                 break
@@ -57,8 +56,7 @@ def _launch_workers(exp_key, n_workers, host, port, result_db_name):
 def _launch_worker(exp_key, worker_id, host, port, result_db_name):
     command = "hyperopt-mongo-worker --mongo={h}:{p}/{db} --poll-interval=10 --exp-key={key} > hyperopt_worker{id}.log 2>&1"
     command = command.format(h=host, p=port, db=result_db_name, key=exp_key, id=worker_id)
-    fail = os.system(command)
-    if fail:
+    if fail := os.system(command):
         raise RuntimeError("Problem starting hyperopt-mongo-worker.")
     
 def _wait_result(exp_prefix, exp_name, timeout):

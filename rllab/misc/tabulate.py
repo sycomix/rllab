@@ -5,29 +5,26 @@
 
 
 
+
 from collections import namedtuple
 from platform import python_version_tuple
 import re
 
 
+_text_type = str
 if python_version_tuple()[0] < "3":
     from itertools import izip_longest
     from functools import partial
-    _none_type = type(None)
-    _int_type = int
-    _float_type = float
-    _text_type = str
     _binary_type = str
 else:
     from itertools import zip_longest as izip_longest
     from functools import reduce, partial
-    _none_type = type(None)
-    _int_type = int
-    _float_type = float
-    _text_type = str
     _binary_type = bytes
 
 
+_float_type = float
+_int_type = int
+_none_type = type(None)
 __all__ = ["tabulate", "tabulate_formats", "simple_separated_format"]
 __version__ = "0.7.2"
 
@@ -236,9 +233,11 @@ def _isint(string):
     >>> _isint("123.45")
     False
     """
-    return type(string) is int or \
-           (isinstance(string, _binary_type) or isinstance(string, _text_type)) and \
-           _isconvertible(int, string)
+    return (
+        type(string) is int
+        or (isinstance(string, (_binary_type, _text_type)))
+        and _isconvertible(int, string)
+    )
 
 
 def _type(string, has_invisible=True):
@@ -257,8 +256,7 @@ def _type(string, has_invisible=True):
 
     """
 
-    if has_invisible and \
-       (isinstance(string, _text_type) or isinstance(string, _binary_type)):
+    if has_invisible and (isinstance(string, (_text_type, _binary_type))):
         string = _strip_invisible(string)
 
     if string is None:
@@ -288,18 +286,13 @@ def _afterpoint(string):
     2
 
     """
-    if _isnumber(string):
-        if _isint(string):
-            return -1
-        else:
-            pos = string.rfind(".")
-            pos = string.lower().rfind("e") if pos < 0 else pos
-            if pos >= 0:
-                return len(string) - pos - 1
-            else:
-                return -1  # no point
-    else:
+    if not _isnumber(string):
         return -1  # not a number
+    if _isint(string):
+        return -1
+    pos = string.rfind(".")
+    pos = string.lower().rfind("e") if pos < 0 else pos
+    return len(string) - pos - 1 if pos >= 0 else -1
 
 
 def _padleft(width, s, has_invisible=True):
@@ -353,7 +346,7 @@ def _visible_width(s):
     (5, 5)
 
     """
-    if isinstance(s, _text_type) or isinstance(s, _binary_type):
+    if isinstance(s, (_text_type, _binary_type)):
         return len(_strip_invisible(s))
     else:
         return len(_text_type(s))
@@ -387,14 +380,9 @@ def _align_column(strings, alignment, minwidth=0, has_invisible=True):
         strings = [s.strip() for s in strings]
         padfn = _padright
 
-    if has_invisible:
-        width_fn = _visible_width
-    else:
-        width_fn = len
-
+    width_fn = _visible_width if has_invisible else len
     maxwidth = max(max(list(map(width_fn, strings))), minwidth)
-    padded_strings = [padfn(maxwidth, s, has_invisible) for s in strings]
-    return padded_strings
+    return [padfn(maxwidth, s, has_invisible) for s in strings]
 
 
 def _more_generic(type1, type2):
@@ -443,14 +431,16 @@ def _format(val, valtype, floatfmt, missingval=""):
     if val is None:
         return missingval
 
-    if valtype in [int, _text_type]:
+    if (
+        valtype in [int, _text_type]
+        or valtype is not _binary_type
+        and valtype is not float
+    ):
         return "{0}".format(val)
     elif valtype is _binary_type:
         return _text_type(val, "ascii")
-    elif valtype is float:
-        return format(float(val), floatfmt)
     else:
-        return "{0}".format(val)
+        return format(float(val), floatfmt)
 
 
 def _align_header(header, alignment, width):
@@ -529,11 +519,11 @@ def _normalize_tabular_data(tabular_data, headers):
     rows = list(map(list,rows))
 
     # pad with empty headers for initial columns if necessary
-    if headers and len(rows) > 0:
-       nhs = len(headers)
-       ncols = len(rows[0])
-       if nhs < ncols:
-           headers = [""]*(ncols - nhs) + headers
+    if headers and rows:
+        nhs = len(headers)
+        ncols = len(rows[0])
+        if nhs < ncols:
+            headers = [""]*(ncols - nhs) + headers
 
     return rows, headers
 
@@ -744,11 +734,7 @@ def tabulate(tabular_data, headers=[], tablefmt="simple",
     plain_text = '\n'.join(['\t'.join(map(_text_type, headers))] + \
                             ['\t'.join(map(_text_type, row)) for row in list_of_lists])
     has_invisible = re.search(_invisible_codes, plain_text)
-    if has_invisible:
-        width_fn = _visible_width
-    else:
-        width_fn = len
-
+    width_fn = _visible_width if has_invisible else len
     # format rows and columns, convert numeric values to strings
     cols = list(zip(*list_of_lists))
     coltypes = list(map(_column_type, cols))
@@ -766,11 +752,9 @@ def tabulate(tabular_data, headers=[], tablefmt="simple",
         minwidths = [max(minw, width_fn(c[0])) for minw, c in zip(minwidths, cols)]
         headers = [_align_header(h, a, minw)
                    for h, a, minw in zip(headers, aligns, minwidths)]
-        rows = list(zip(*cols))
     else:
         minwidths = [width_fn(c[0]) for c in cols]
-        rows = list(zip(*cols))
-
+    rows = list(zip(*cols))
     if not isinstance(tablefmt, TableFormat):
         tablefmt = _table_formats.get(tablefmt, _table_formats["simple"])
 
@@ -799,17 +783,15 @@ def _build_line(colwidths, colaligns, linefmt):
         return None
     if hasattr(linefmt, "__call__"):
         return linefmt(colwidths, colaligns)
-    else:
-        begin, fill, sep,  end = linefmt
-        cells = [fill*w for w in colwidths]
-        return _build_simple_row(cells, (begin, sep, end))
+    begin, fill, sep,  end = linefmt
+    cells = [fill*w for w in colwidths]
+    return _build_simple_row(cells, (begin, sep, end))
 
 
 def _pad_row(cells, padding):
     if cells:
         pad = " "*padding
-        padded_cells = [pad + cell + pad for cell in cells]
-        return padded_cells
+        return [pad + cell + pad for cell in cells]
     else:
         return cells
 
@@ -836,14 +818,19 @@ def _format_table(fmt, headers, rows, colwidths, colaligns):
     if padded_rows and fmt.linebetweenrows and "linebetweenrows" not in hidden:
         # initial rows with a line below
         for row in padded_rows[:-1]:
-            lines.append(_build_row(row, padded_widths, colaligns, fmt.datarow))
-            lines.append(_build_line(padded_widths, colaligns, fmt.linebetweenrows))
+            lines.extend(
+                (
+                    _build_row(row, padded_widths, colaligns, fmt.datarow),
+                    _build_line(padded_widths, colaligns, fmt.linebetweenrows),
+                )
+            )
         # the last row without a line below
         lines.append(_build_row(padded_rows[-1], padded_widths, colaligns, fmt.datarow))
     else:
-        for row in padded_rows:
-            lines.append(_build_row(row, padded_widths, colaligns, fmt.datarow))
-
+        lines.extend(
+            _build_row(row, padded_widths, colaligns, fmt.datarow)
+            for row in padded_rows
+        )
     if fmt.linebelow and "linebelow" not in hidden:
         lines.append(_build_line(padded_widths, colaligns, fmt.linebelow))
 

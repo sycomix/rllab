@@ -27,9 +27,7 @@ def plot_experiments(name_or_patterns, legend=False, post_processing=None, key='
         returns = []
         with open(osp.join(f, 'progress.csv'), 'rb') as csvfile:
             reader = csv.DictReader(csvfile)
-            for row in reader:
-                if row[key]:
-                    returns.append(float(row[key]))
+            returns.extend(float(row[key]) for row in reader if row[key])
         returns = np.array(returns)
         if post_processing:
             returns = post_processing(returns)
@@ -55,7 +53,7 @@ class Experiment(object):
                     if subk == "_name":
                         flat_params[k] = subv
                     else:
-                        flat_params[k + "_" + subk] = subv
+                        flat_params[f"{k}_{subk}"] = subv
             else:
                 flat_params[k] = v
         return flat_params
@@ -63,8 +61,7 @@ class Experiment(object):
 
 def uniq(seq):
     seen = set()
-    seen_add = seen.add
-    return [x for x in seq if not (x in seen or seen_add(x))]
+    return [x for x in seq if x not in seen and not seen.add(x)]
 
 
 class ExperimentDatabase(object):
@@ -80,8 +77,7 @@ class ExperimentDatabase(object):
                     if k not in entries:
                         entries[k] = []
                     entries[k].append(float(v))
-        entries = dict([(k, np.array(v)) for k, v in entries.items()])
-        return entries
+        return dict([(k, np.array(v)) for k, v in entries.items()])
 
     def _read_params(self, params_file):
         with open(params_file, "r") as f:
@@ -141,7 +137,7 @@ class ExperimentDatabase(object):
             if len(exp_color_keys) > len(color_pool):
                 raise NotImplementedError
             for exp_color_key, color in zip(exp_color_keys, color_pool):
-                print("%s: %s" % (str(exp_color_key), color))
+                print(f"{str(exp_color_key)}: {color}")
             color_map = dict(list(zip(exp_color_keys, color_pool)))
         used_legends = []
         legend_list = []
@@ -161,7 +157,7 @@ class ExperimentDatabase(object):
                 used_legends.append(exp_color_key)
                 legend_list.append(plots[-1])
 
-        if len(legends) > 0:
+        if legends:
             plt.legend(plots, legends)
         elif len(legend_list) > 0:
             plt.legend(legend_list, used_legends)
@@ -169,11 +165,7 @@ class ExperimentDatabase(object):
     def filter_experiments(self, **kwargs):
         for exp in self._experiments:
             exp_params = exp.flat_params
-            match = True
-            for key, val in kwargs.items():
-                if exp_params.get(key, None) != val:
-                    match = False
-                    break
+            match = all(exp_params.get(key, None) == val for key, val in kwargs.items())
             if match:
                 yield exp
 

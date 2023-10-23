@@ -4,10 +4,7 @@ from types import LambdaType
 
 
 def _extract_type(typ):
-    if isinstance(typ, LambdaType):
-        return typ()
-    else:
-        return typ
+    return typ() if isinstance(typ, LambdaType) else typ
 
 
 class AttrDecl(object):
@@ -36,10 +33,10 @@ class XmlChild(AttrDecl):
     def from_xml(self, xml):
         xml_elems = [child for child in xml if child.tag == self._tag]
         if len(xml_elems) > 1:
-            raise ValueError('Multiple candidate found for tag %s' % self._tag)
-        if len(xml_elems) == 0:
+            raise ValueError(f'Multiple candidate found for tag {self._tag}')
+        if not xml_elems:
             if self._required:
-                raise ValueError('Missing xml element with tag %s' % self._tag)
+                raise ValueError(f'Missing xml element with tag {self._tag}')
             else:
                 return None
         elem = xml_elems[0]
@@ -61,7 +58,7 @@ class XmlAttr(AttrDecl):
         if self._name in xml.attrib:
             return _extract_type(self._typ).from_str(xml.attrib[self._name])
         elif self._required:
-            raise ValueError("Missing required attribute %s" % self._name)
+            raise ValueError(f"Missing required attribute {self._name}")
         else:
             return None
 
@@ -74,8 +71,7 @@ class XmlElem(object):
     @classmethod
     def from_xml(cls, xml):
         if cls.tag != xml.tag:
-            raise ValueError(
-                "Tag mismatch: expected %s but got %s" % (cls.tag, xml.tag))
+            raise ValueError(f"Tag mismatch: expected {cls.tag} but got {xml.tag}")
         attrs = cls.get_attrs()
         inst = cls()
         used_attrs = []
@@ -87,7 +83,7 @@ class XmlElem(object):
                 setattr(inst, name, val)
         for attr in list(xml.attrib.keys()):
             if attr not in used_attrs:
-                raise ValueError("Unrecognized attribute: %s" % attr)
+                raise ValueError(f"Unrecognized attribute: {attr}")
         return inst
 
     @classmethod
@@ -100,10 +96,11 @@ class XmlElem(object):
         return cls._attrs
 
     def __str__(self):
-        attrs = []
-        for name, _ in self.__class__.get_attrs():
-            attrs.append("%s=%s" % (name, str(getattr(self, name))))
-        return self.__class__.__name__ + "(" + ", ".join(attrs) + ")"
+        attrs = [
+            f"{name}={str(getattr(self, name))}"
+            for name, _ in self.__class__.get_attrs()
+        ]
+        return f"{self.__class__.__name__}(" + ", ".join(attrs) + ")"
 
     def __repr__(self):
         return str(self)

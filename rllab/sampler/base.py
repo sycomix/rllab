@@ -57,8 +57,8 @@ class BaseSampler(Sampler):
         for idx, path in enumerate(paths):
             path_baselines = np.append(all_path_baselines[idx], 0)
             deltas = path["rewards"] + \
-                     self.algo.discount * path_baselines[1:] - \
-                     path_baselines[:-1]
+                         self.algo.discount * path_baselines[1:] - \
+                         path_baselines[:-1]
             path["advantages"] = special.discount_cumsum(
                 deltas, self.algo.discount * self.algo.gae_lambda)
             path["returns"] = special.discount_cumsum(path["rewards"], self.algo.discount)
@@ -86,7 +86,7 @@ class BaseSampler(Sampler):
                 advantages = util.shift_advantages_to_positive(advantages)
 
             average_discounted_return = \
-                np.mean([path["returns"][0] for path in paths])
+                    np.mean([path["returns"][0] for path in paths])
 
             undiscounted_returns = [sum(path["rewards"]) for path in paths]
 
@@ -103,7 +103,7 @@ class BaseSampler(Sampler):
                 paths=paths,
             )
         else:
-            max_path_length = max([len(path["advantages"]) for path in paths])
+            max_path_length = max(len(path["advantages"]) for path in paths)
 
             # make all paths the same length (pad extra advantages with 0)
             obs = [path["observations"] for path in paths]
@@ -142,7 +142,7 @@ class BaseSampler(Sampler):
             valids = tensor_utils.pad_tensor_n(valids, max_path_length)
 
             average_discounted_return = \
-                np.mean([path["returns"][0] for path in paths])
+                    np.mean([path["returns"][0] for path in paths])
 
             undiscounted_returns = [sum(path["rewards"]) for path in paths]
 

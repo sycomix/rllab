@@ -22,7 +22,7 @@ def flatten(l):
 
 
 def load_progress(progress_csv_path):
-    print("Reading %s" % progress_csv_path)
+    print(f"Reading {progress_csv_path}")
     entries = dict()
     with open(progress_csv_path, 'r') as csvfile:
         reader = csv.DictReader(csvfile)
@@ -34,8 +34,7 @@ def load_progress(progress_csv_path):
                     entries[k].append(float(v))
                 except:
                     entries[k].append(0.)
-    entries = dict([(k, np.array(v)) for k, v in entries.items()])
-    return entries
+    return dict([(k, np.array(v)) for k, v in entries.items()])
 
 
 def to_json(stub_object):
@@ -63,7 +62,7 @@ def flatten_dict(d):
         if isinstance(v, dict):
             v = flatten_dict(v)
             for subk, subv in flatten_dict(v).items():
-                flat_params[k + "." + subk] = subv
+                flat_params[f"{k}.{subk}"] = subv
         else:
             flat_params[k] = v
     return flat_params
@@ -83,11 +82,8 @@ def lookup(d, keys):
     if not isinstance(keys, list):
         keys = keys.split(".")
     for k in keys:
-        if hasattr(d, "__getitem__"):
-            if k in d:
-                d = d[k]
-            else:
-                return None
+        if hasattr(d, "__getitem__") and k in d:
+            d = d[k]
         else:
             return None
     return d
@@ -120,18 +116,18 @@ def load_exps_data(exp_folder_paths,disable_variant=False):
 
 
 def smart_repr(x):
-    if isinstance(x, tuple):
-        if len(x) == 0:
-            return "tuple()"
-        elif len(x) == 1:
-            return "(%s,)" % smart_repr(x[0])
-        else:
-            return "(" + ",".join(map(smart_repr, x)) + ")"
+    if not isinstance(x, tuple):
+        return (
+            f"__import__('pydoc').locate('{x.__module__}.{x.__name__}')"
+            if hasattr(x, "__call__")
+            else repr(x)
+        )
+    if len(x) == 0:
+        return "tuple()"
+    elif len(x) == 1:
+        return f"({smart_repr(x[0])},)"
     else:
-        if hasattr(x, "__call__"):
-            return "__import__('pydoc').locate('%s')" % (x.__module__ + "." + x.__name__)
-        else:
-            return repr(x)
+        return "(" + ",".join(map(smart_repr, x)) + ")"
 
 
 def extract_distinct_params(exps_data, excluded_params=('exp_name', 'seed', 'log_dir'), l=1):
@@ -173,22 +169,21 @@ def extract_distinct_params(exps_data, excluded_params=('exp_name', 'seed', 'log
         import ipdb; ipdb.set_trace()
     proposals = [(k, [x[1] for x in v])
                  for k, v in itertools.groupby(stringified_pairs, lambda x: x[0])]
-    filtered = [(k, v) for (k, v) in proposals if len(v) > l and all(
-        [k.find(excluded_param) != 0 for excluded_param in excluded_params])]
-    return filtered
+    return [
+        (k, v)
+        for k, v in proposals
+        if len(v) > l
+        and all(
+            k.find(excluded_param) != 0 for excluded_param in excluded_params
+        )
+    ]
 
 
 class Selector(object):
     def __init__(self, exps_data, filters=None, custom_filters=None):
         self._exps_data = exps_data
-        if filters is None:
-            self._filters = tuple()
-        else:
-            self._filters = tuple(filters)
-        if custom_filters is None:
-            self._custom_filters = []
-        else:
-            self._custom_filters = custom_filters
+        self._filters = tuple() if filters is None else tuple(filters)
+        self._custom_filters = [] if custom_filters is None else custom_filters
 
     def where(self, k, v):
         return Selector(self._exps_data, self._filters + ((k, v),), self._custom_filters)

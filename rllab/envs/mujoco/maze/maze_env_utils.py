@@ -85,9 +85,7 @@ def ray_segment_intersect(ray, segment):
     len = 1
     pt2 = (x + len * math.cos(theta), y + len * math.sin(theta))
     xo, yo, valid, r, s = line_intersect(pt1, pt2, *segment)
-    if valid and r >= 0 and 0 <= s <= 1:
-        return (xo, yo)
-    return None
+    return (xo, yo) if valid and r >= 0 and 0 <= s <= 1 else None
 
 
 def point_distance(p1, p2):

@@ -34,7 +34,7 @@ def compact(x):
     all None elements; otherwise it returns the input itself.
     """
     if isinstance(x, dict):
-        return dict((k, v) for k, v in x.items() if v is not None)
+        return {k: v for k, v in x.items() if v is not None}
     elif isinstance(x, list):
         return [elem for elem in x if elem is not None]
     return x
@@ -51,7 +51,7 @@ def cached_function(inputs, outputs):
     cache_dir = Path('~/.hierctrl_cache')
     cache_dir = cache_dir.expanduser()
     cache_dir.mkdir_p()
-    cache_file = cache_dir / ('%s.pkl' % cache_key)
+    cache_file = cache_dir / f'{cache_key}.pkl'
     if cache_file.exists():
         with Message("unpickling"):
             with open(cache_file, "rb") as f:
@@ -82,9 +82,7 @@ class lazydict(object):
         self.set(i, y)
 
     def get(self, key, default=None):
-        if key in self._lazy_dict:
-            return self[key]
-        return default
+        return self[key] if key in self._lazy_dict else default
 
     def set(self, key, value):
         self._lazy_dict[key] = value
@@ -93,10 +91,7 @@ class lazydict(object):
 def iscanl(f, l, base=None):
     started = False
     for x in l:
-        if base or started:
-            base = f(base, x)
-        else:
-            base = x
+        base = f(base, x) if base or started else x
         started = True
         yield base
 
@@ -104,10 +99,7 @@ def iscanl(f, l, base=None):
 def iscanr(f, l, base=None):
     started = False
     for x in list(l)[::-1]:
-        if base or started:
-            base = f(x, base)
-        else:
-            base = x
+        base = f(x, base) if base or started else x
         started = True
         yield base
 
@@ -123,7 +115,7 @@ def scanr(f, l, base=None):
 def compile_function(inputs=None, outputs=None, updates=None, givens=None, log_name=None, **kwargs):
     import theano
     if log_name:
-        msg = Message("Compiling function %s" % log_name)
+        msg = Message(f"Compiling function {log_name}")
         msg.__enter__()
     ret = theano.function(
         inputs=inputs,
@@ -160,12 +152,16 @@ def is_iterable(obj):
 
 # cut the path for any time >= t
 def truncate_path(p, t):
-    return dict((k, p[k][:t]) for k in p)
+    return {k: p[k][:t] for k in p}
 
 
 def concat_paths(p1, p2):
     import numpy as np
-    return dict((k1, np.concatenate([p1[k1], p2[k1]])) for k1 in list(p1.keys()) if k1 in p2)
+    return {
+        k1: np.concatenate([p1[k1], p2[k1]])
+        for k1 in list(p1.keys())
+        if k1 in p2
+    }
 
 
 def path_len(p):
@@ -198,12 +194,7 @@ def set_seed(seed):
         tf.set_random_seed(seed)
     except Exception as e:
         print(e)
-    print((
-        colorize(
-            'using seed %s' % (str(seed)),
-            'green'
-        )
-    ))
+    print(colorize(f'using seed {seed}', 'green'))
 
 
 def get_seed():
@@ -249,11 +240,7 @@ def flatten_hessian(cost, wrt, consider_constant=None,
     using_list = isinstance(wrt, list)
     using_tuple = isinstance(wrt, tuple)
 
-    if isinstance(wrt, (list, tuple)):
-        wrt = list(wrt)
-    else:
-        wrt = [wrt]
-
+    wrt = list(wrt) if isinstance(wrt, (list, tuple)) else [wrt]
     hessians = []
     if not block_diagonal:
         expr = TT.concatenate([
@@ -287,11 +274,10 @@ def flatten_hessian(cost, wrt, consider_constant=None,
              "happen! Report this to theano-users (also include the "
              "script that generated the error)")
         hessians.append(hess)
-    if block_diagonal:
-        from theano.gradient import format_as
-        return format_as(using_list, using_tuple, hessians)
-    else:
+    if not block_diagonal:
         return TT.concatenate(hessians, axis=1)
+    from theano.gradient import format_as
+    return format_as(using_list, using_tuple, hessians)
 
 
 def flatten_tensor_variables(ts):
@@ -306,15 +292,15 @@ def flatten_shape_dim(shape):
 def print_lasagne_layer(layer, prefix=""):
     params = ""
     if layer.name:
-        params += ", name=" + layer.name
+        params += f", name={layer.name}"
     if getattr(layer, 'nonlinearity', None):
-        params += ", nonlinearity=" + layer.nonlinearity.__name__
+        params += f", nonlinearity={layer.nonlinearity.__name__}"
     params = params[2:]
     print(prefix + layer.__class__.__name__ + "[" + params + "]")
     if hasattr(layer, 'input_layers') and layer.input_layers is not None:
-        [print_lasagne_layer(x, prefix + "  ") for x in layer.input_layers]
+        [print_lasagne_layer(x, f"{prefix}  ") for x in layer.input_layers]
     elif hasattr(layer, 'input_layer') and layer.input_layer is not None:
-        print_lasagne_layer(layer.input_layer, prefix + "  ")
+        print_lasagne_layer(layer.input_layer, f"{prefix}  ")
 
 
 def unflatten_tensor_variables(flatarr, shapes, symb_arrs):

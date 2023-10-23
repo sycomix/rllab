@@ -15,8 +15,7 @@ class PointEnv(Env):
 
     def reset(self):
         self._state = np.random.uniform(-1, 1, size=(2,))
-        observation = np.copy(self._state)
-        return observation
+        return np.copy(self._state)
 
     def step(self, action):
         self._state = self._state + action

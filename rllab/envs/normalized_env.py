@@ -50,10 +50,7 @@ class NormalizedEnv(ProxyEnv, Serializable):
 
     def reset(self):
         ret = self._wrapped_env.reset()
-        if self._normalize_obs:
-            return self._apply_normalize_obs(ret)
-        else:
-            return ret
+        return self._apply_normalize_obs(ret) if self._normalize_obs else ret
 
     def __getstate__(self):
         d = Serializable.__getstate__(self)
@@ -92,7 +89,7 @@ class NormalizedEnv(ProxyEnv, Serializable):
         return Step(next_obs, reward * self._scale_reward, done, **info)
 
     def __str__(self):
-        return "Normalized: %s" % self._wrapped_env
+        return f"Normalized: {self._wrapped_env}"
 
     # def log_diagnostics(self, paths):
     #     print "Obs mean:", self._obs_mean

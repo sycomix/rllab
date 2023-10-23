@@ -14,7 +14,7 @@ from rllab.misc import special
 from rllab.optimizers.lbfgs_optimizer import LbfgsOptimizer
 from rllab.optimizers.penalty_lbfgs_optimizer import PenaltyLbfgsOptimizer
 
-NONE = list()
+NONE = []
 
 
 class CategoricalMLPRegressor(LasagnePowered):
@@ -48,11 +48,7 @@ class CategoricalMLPRegressor(LasagnePowered):
         Serializable.quick_init(self, locals())
 
         if optimizer is None:
-            if use_trust_region:
-                optimizer = PenaltyLbfgsOptimizer()
-            else:
-                optimizer = LbfgsOptimizer()
-
+            optimizer = PenaltyLbfgsOptimizer() if use_trust_region else LbfgsOptimizer()
         self.output_dim = output_dim
         self._optimizer = optimizer
 
@@ -136,15 +132,12 @@ class CategoricalMLPRegressor(LasagnePowered):
         else:
             inputs = [xs, ys]
         loss_before = self._optimizer.loss(inputs)
-        if self._name:
-            prefix = self._name + "_"
-        else:
-            prefix = ""
-        logger.record_tabular(prefix + 'LossBefore', loss_before)
+        prefix = f"{self._name}_" if self._name else ""
+        logger.record_tabular(f'{prefix}LossBefore', loss_before)
         self._optimizer.optimize(inputs)
         loss_after = self._optimizer.loss(inputs)
-        logger.record_tabular(prefix + 'LossAfter', loss_after)
-        logger.record_tabular(prefix + 'dLoss', loss_before - loss_after)
+        logger.record_tabular(f'{prefix}LossAfter', loss_after)
+        logger.record_tabular(f'{prefix}dLoss', loss_before - loss_after)
 
     def predict(self, xs):
         return self._f_predict(np.asarray(xs))

@@ -197,32 +197,26 @@ class String(MutableString, Union):
     def __len__(self):
         return self.data and len(self.data) or 0
 
-    def from_param(cls, obj):
+    def from_param(self, obj):
         # Convert None or 0
         if obj is None or obj == 0:
-            return cls(POINTER(c_char)())
+            return self(POINTER(c_char)())
 
-        # Convert from String
         elif isinstance(obj, String):
             return obj
 
-        # Convert from str
         elif isinstance(obj, str):
-            return cls(obj)
+            return self(obj)
 
-        # Convert from c_char_p
         elif isinstance(obj, c_char_p):
             return obj
 
-        # Convert from POINTER(c_char)
         elif isinstance(obj, POINTER(c_char)):
             return obj
 
-        # Convert from raw pointer
         elif isinstance(obj, int):
-            return cls(cast(obj, POINTER(c_char)))
+            return self(cast(obj, POINTER(c_char)))
 
-        # Convert from object
         else:
             return String.from_param(obj._as_parameter_)
     from_param = classmethod(from_param)

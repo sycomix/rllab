@@ -41,11 +41,7 @@ class MLP(LasagnePowered, Serializable):
 
         Serializable.quick_init(self, locals())
 
-        if name is None:
-            prefix = ""
-        else:
-            prefix = name + "_"
-
+        prefix = "" if name is None else f"{name}_"
         if input_layer is None:
             l_in = L.InputLayer(shape=(None,) + input_shape, input_var=input_var)
         else:
@@ -69,7 +65,7 @@ class MLP(LasagnePowered, Serializable):
             l_hid,
             num_units=output_dim,
             nonlinearity=output_nonlinearity,
-            name="%soutput" % (prefix,),
+            name=f"{prefix}output",
             W=output_W_init,
             b=output_b_init,
         )
@@ -169,8 +165,7 @@ class GRULayer(L.Layer):
         # flatten extra dimensions
         shuffled_input = input.dimshuffle(1, 0, 2)
         hs, _ = theano.scan(fn=self.step, sequences=[shuffled_input], outputs_info=h0s)
-        shuffled_hs = hs.dimshuffle(1, 0, 2)
-        return shuffled_hs
+        return hs.dimshuffle(1, 0, 2)
 
 
 class GRUStepLayer(L.MergeLayer):
@@ -280,11 +275,7 @@ class ConvNetwork(object):
                  output_nonlinearity=LN.softmax,
                  name=None, input_var=None):
 
-        if name is None:
-            prefix = ""
-        else:
-            prefix = name + "_"
-
+        prefix = "" if name is None else f"{name}_"
         if len(input_shape) == 3:
             l_in = L.InputLayer(shape=(None, np.prod(input_shape)), input_var=input_var)
             l_hid = L.reshape(l_in, ([0],) + input_shape)
@@ -325,7 +316,7 @@ class ConvNetwork(object):
             l_hid,
             num_units=output_dim,
             nonlinearity=output_nonlinearity,
-            name="%soutput" % (prefix,),
+            name=f"{prefix}output",
             W=output_W_init,
             b=output_b_init,
         )

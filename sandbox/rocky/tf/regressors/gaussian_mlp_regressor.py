@@ -201,17 +201,16 @@ class GaussianMLPRegressor(LayersPowered, Serializable):
         else:
             inputs = [xs, ys]
         loss_before = self._optimizer.loss(inputs)
-        if self._name:
-            prefix = self._name + "_"
-        else:
-            prefix = ""
-        logger.record_tabular(prefix + 'LossBefore', loss_before)
+        prefix = f"{self._name}_" if self._name else ""
+        logger.record_tabular(f'{prefix}LossBefore', loss_before)
         self._optimizer.optimize(inputs)
         loss_after = self._optimizer.loss(inputs)
-        logger.record_tabular(prefix + 'LossAfter', loss_after)
+        logger.record_tabular(f'{prefix}LossAfter', loss_after)
         if self._use_trust_region:
-            logger.record_tabular(prefix + 'MeanKL', self._optimizer.constraint_val(inputs))
-        logger.record_tabular(prefix + 'dLoss', loss_before - loss_after)
+            logger.record_tabular(
+                f'{prefix}MeanKL', self._optimizer.constraint_val(inputs)
+            )
+        logger.record_tabular(f'{prefix}dLoss', loss_before - loss_after)
 
     def predict(self, xs):
         """

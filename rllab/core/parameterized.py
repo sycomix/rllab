@@ -67,7 +67,7 @@ class Parameterized(Serializable):
                 param_values):
             param.set_value(value.astype(dtype))
             if debug:
-                print("setting value of %s" % param.name)
+                print(f"setting value of {param.name}")
 
     def flat_to_params(self, flattened_params, **tags):
         return unflatten_tensors(flattened_params, self.get_param_shapes(**tags))

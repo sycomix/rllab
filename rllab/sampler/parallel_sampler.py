@@ -138,9 +138,9 @@ def truncate_paths(paths, max_samples):
     # make a copy
     paths = list(paths)
     total_n_samples = sum(len(path["rewards"]) for path in paths)
-    while len(paths) > 0 and total_n_samples - len(paths[-1]["rewards"]) >= max_samples:
+    while paths and total_n_samples - len(paths[-1]["rewards"]) >= max_samples:
         total_n_samples -= len(paths.pop(-1)["rewards"])
-    if len(paths) > 0:
+    if paths:
         last_path = paths.pop(-1)
         truncated_last_path = dict()
         truncated_len = len(last_path["rewards"]) - (total_n_samples - max_samples)

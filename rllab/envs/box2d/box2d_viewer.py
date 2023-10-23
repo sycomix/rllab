@@ -74,11 +74,7 @@ class PygameDraw(b2DrawExtended):
         and color.
         """
         radius *= self.zoom
-        if radius < 1:
-            radius = 1
-        else:
-            radius = int(radius)
-
+        radius = 1 if radius < 1 else int(radius)
         pygame.draw.circle(self.surface, color.bytes,
                            center, radius, drawwidth)
 
@@ -88,11 +84,7 @@ class PygameDraw(b2DrawExtended):
         color.
         """
         radius *= self.zoom
-        if radius < 1:
-            radius = 1
-        else:
-            radius = int(radius)
-
+        radius = 1 if radius < 1 else int(radius)
         pygame.draw.circle(
             self.surface,
             (color / 2).bytes + [127], center, radius, 0)

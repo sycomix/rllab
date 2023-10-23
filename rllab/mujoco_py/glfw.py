@@ -38,14 +38,14 @@ def _find_library_candidates(library_names,
     candidates = set()
     for library_name in library_names:
         for search_path in library_search_paths:
-            glob_query = os.path.join(search_path, '*'+library_name+'*')
+            glob_query = os.path.join(search_path, f'*{library_name}*')
             for filename in glob.iglob(glob_query):
                 filename = os.path.realpath(filename)
                 if filename in candidates:
                     continue
                 basename = os.path.basename(filename)
-                if basename.startswith('lib'+library_name):
-                    basename_end = basename[len('lib'+library_name):]
+                if basename.startswith(f'lib{library_name}'):
+                    basename_end = basename[len(f'lib{library_name}'):]
                 elif basename.startswith(library_name):
                     basename_end = basename[len(library_name):]
                 else:
@@ -74,7 +74,7 @@ def _load_library():
     elif sys.platform.startswith("win"):
         libfile = osp.abspath(osp.join(osp.dirname(__file__),"../../vendor/mujoco/glfw3.dll"))
     else:
-        raise RuntimeError("unrecognized platform %s"%sys.platform)
+        raise RuntimeError(f"unrecognized platform {sys.platform}")
     return ctypes.CDLL(libfile)
 
 
@@ -125,11 +125,7 @@ def _glfw_get_version(filename):
     process = subprocess.Popen(args, universal_newlines=True,
                                stdin=subprocess.PIPE, stdout=subprocess.PIPE)
     out = process.communicate(_to_char_p(filename))[0]
-    out = out.strip()
-    if out:
-        return eval(out)
-    else:
-        return None
+    return eval(out) if (out := out.strip()) else None
 
 
 
@@ -604,8 +600,7 @@ def get_monitors():
     count_value = ctypes.c_int(0)
     count = ctypes.pointer(count_value)
     result = _glfw.glfwGetMonitors(count)
-    monitors = [result[i] for i in range(count_value.value)]
-    return monitors
+    return [result[i] for i in range(count_value.value)]
 
 _glfw.glfwGetPrimaryMonitor.restype = ctypes.POINTER(_GLFWmonitor)
 _glfw.glfwGetPrimaryMonitor.argtypes = []
@@ -699,8 +694,7 @@ def get_video_modes(monitor):
     count_value = ctypes.c_int(0)
     count = ctypes.pointer(count_value)
     result = _glfw.glfwGetVideoModes(monitor, count)
-    videomodes = [result[i].unwrap() for i in range(count_value.value)]
-    return videomodes
+    return [result[i].unwrap() for i in range(count_value.value)]
 
 _glfw.glfwGetVideoMode.restype = ctypes.POINTER(_GLFWvidmode)
 _glfw.glfwGetVideoMode.argtypes = [ctypes.POINTER(_GLFWmonitor)]

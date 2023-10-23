@@ -14,20 +14,11 @@ class Serializable(object):
         if sys.version_info >= (3, 0):
             spec = inspect.getfullargspec(self.__init__)
             # Exclude the first "self" parameter
-            if spec.varkw:
-                kwargs = locals_[spec.varkw]
-            else:
-                kwargs = dict()
+            kwargs = locals_[spec.varkw] if spec.varkw else dict()
         else:
             spec = inspect.getargspec(self.__init__)
-            if spec.keywords:
-                kwargs = locals_[spec.keywords]
-            else:
-                kwargs = dict()
-        if spec.varargs:
-            varargs = locals_[spec.varargs]
-        else:
-            varargs = tuple()
+            kwargs = locals_[spec.keywords] if spec.keywords else dict()
+        varargs = locals_[spec.varargs] if spec.varargs else tuple()
         in_order_args = [locals_[arg] for arg in spec.args][1:]
         self.__args = tuple(in_order_args) + varargs
         self.__kwargs = kwargs

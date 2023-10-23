@@ -37,5 +37,4 @@ class BatchSampler(BaseSampler):
         if self.algo.whole_paths:
             return paths
         else:
-            paths_truncated = parallel_sampler.truncate_paths(paths, self.algo.batch_size)
-            return paths_truncated
+            return parallel_sampler.truncate_paths(paths, self.algo.batch_size)

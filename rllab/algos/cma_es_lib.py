@@ -535,11 +535,18 @@ def _print_warning(msg, method_name=None, class_name=None, iteration=None,
     if verbose is None:
         verbose = global_verbosity
     if verbose > 0:
-        print('WARNING (module=' + __name__ +
-              (', class=' + str(class_name) if class_name else '') +
-              (', method=' + str(method_name) if method_name else '') +
-              (', iteration=' + str(iteration) if iteration else '') +
-              '): ', msg)
+        print(
+            (
+                (
+                    f'WARNING (module={__name__}'
+                    + (f', class={str(class_name)}' if class_name else '')
+                )
+                + (f', method={str(method_name)}' if method_name else '')
+                + (f', iteration={str(iteration)}' if iteration else '')
+                + '): '
+            ),
+            msg,
+        )
 
 # ____________________________________________________________
 # ____________________________________________________________
@@ -770,10 +777,7 @@ if use_archives:
                 self.last_iteration = iteration
             else:
                 iteration = self.last_iteration + 0.5  # a hack to get a somewhat reasonable value
-            if value is not None:
-                self[key] = value
-            else:
-                self[key] = {'pheno': key}
+            self[key] = value if value is not None else {'pheno': key}
             if geno is not None:
                 self[key]['geno'] = geno
             if iteration is not None:
@@ -878,11 +882,14 @@ class BoundaryHandlerBase(object):
                 except TypeError:
                     bounds[i] = [bounds[i]]
                     l[i] = 1
-                if all([bounds[i][j] is None or not isfinite(bounds[i][j])
-                        for j in rglen(bounds[i])]):
+                if all(
+                    bounds[i][j] is None or not isfinite(bounds[i][j])
+                    for j in rglen(bounds[i])
+                ):
                     bounds[i] = None
-                if bounds[i] is not None and any([bounds[i][j] == (-1)**i * np.inf
-                                                  for j in rglen(bounds[i])]):
+                if bounds[i] is not None and any(
+                    bounds[i][j] == (-1) ** i * np.inf for j in rglen(bounds[i])
+                ):
                     raise ValueError('lower/upper is +inf/-inf and ' +
                                      'therefore no finite feasible solution is available')
             self.bounds = bounds
@@ -894,10 +901,7 @@ class BoundaryHandlerBase(object):
         BoundPenalty class, it should maybe change.
 
         """
-        if isscalar(solutions[0]):
-            return 0.0
-        else:
-            return len(solutions) * [0.0]
+        return 0.0 if isscalar(solutions[0]) else len(solutions) * [0.0]
 
     def update(self, *args, **kwargs):
         return self
@@ -929,9 +933,9 @@ class BoundaryHandlerBase(object):
 
     def get_bounds(self, which, dimension):
         """``get_bounds('lower', 8)`` returns the lower bounds in 8-D"""
-        if which == 'lower' or which == 0:
+        if which in ['lower', 0]:
             return self._get_bounds(0, dimension)
-        elif which == 'upper' or which == 1:
+        elif which in ['upper', 1]:
             return self._get_bounds(1, dimension)
         else:
             raise ValueError("argument which must be 'lower' or 'upper'")
@@ -994,9 +998,13 @@ class BoundaryHandlerBase(object):
                     l[i] = 1
             b = []  # bounds in different format
             try:
-                for i in range(max(l)):
-                    b.append([bounds[0][i] if i < l[0] else None,
-                              bounds[1][i] if i < l[1] else None])
+                b.extend(
+                    [
+                        bounds[0][i] if i < l[0] else None,
+                        bounds[1][i] if i < l[1] else None,
+                    ]
+                    for i in range(max(l))
+                )
             except (TypeError, IndexError):
                 print("boundaries must be provided in the form " +
                       "[scalar_of_vector, scalar_or_vector]")
@@ -1213,10 +1221,6 @@ class BoundPenalty(BoundaryHandlerBase):
 
         """
         raise NotImplementedError('Solution class disappeared')
-        count = np.zeros(len(solutions[0]))
-        for x in solutions:
-            count += x.unrepaired == x
-        return count / float(len(solutions))
 
     # ____________________________________________________________
     #
@@ -1257,8 +1261,6 @@ class BoundPenalty(BoundaryHandlerBase):
             self.hist.insert(0, val)
         elif val == inf and len(self.hist) > 1:
             self.hist.insert(0, max(self.hist))
-        else:
-            pass  # ignore 0 or nan values
         if len(self.hist) > 20 + (3 * N) / es.popsize:
             self.hist.pop()
 
@@ -1328,8 +1330,7 @@ class BoxConstraintsTransformationBase(object):
         """return ``[ith_lower_bound, ith_upper_bound]``"""
         return self.bounds[self._index(i)]
     def __call__(self, solution_in_genotype):
-        res = [self._transform_i(x, i) for i, x in enumerate(solution_in_genotype)]
-        return res
+        return [self._transform_i(x, i) for i, x in enumerate(solution_in_genotype)]
     transform = __call__
     def inverse(self, solution_in_phenotype, copy_if_changed=True, copy_always=True):
         return [self._inverse_i(y, i) for i, y in enumerate(solution_in_phenotype)]
@@ -1347,7 +1348,6 @@ class BoxConstraintsTransformationBase(object):
 
         """
         return self.inverse(self(solution_genotype))
-        raise NotImplementedError('this is an abstract method that should be implemented in the derived class')
 
 class _BoxConstraintsTransformationTemplate(BoxConstraintsTransformationBase):
     """copy/paste this template to implement a new boundary handling transformation"""
@@ -1506,9 +1506,11 @@ class BoxConstraintsLinQuadTransformation(BoxConstraintsTransformationBase):
         ``tf.inverse(tf(x)) == x``.
 
         """
-        res = [i for i, x in enumerate(solution_genotype)
-                                if not self.is_feasible_i(x, i)]
-        return res
+        return [
+            i
+            for i, x in enumerate(solution_genotype)
+            if not self.is_feasible_i(x, i)
+        ]
     def is_feasible_i(self, x, i):
         """return True if value ``x`` is in the invertible domain of
         variable ``i``
@@ -1535,10 +1537,7 @@ class BoxConstraintsLinQuadTransformation(BoxConstraintsTransformationBase):
 
         """
         assert solution_genotype is not None
-        if copy:
-            y = [val for val in solution_genotype]
-        else:
-            y = solution_genotype
+        y = list(solution_genotype) if copy else solution_genotype
         if isinstance(y, np.ndarray) and not isinstance(y[0], float):
             y = array(y, dtype=float)
         for i in rglen(y):
@@ -1695,8 +1694,9 @@ class GenoPheno(object):
             if not isinstance(fixed_values, dict):
                 raise _Error("fixed_values must be a dictionary {index:value,...}")
             if max(fixed_values.keys()) >= dim:
-                raise _Error("max(fixed_values.keys()) = " + str(max(fixed_values.keys())) +
-                    " >= dim=N=" + str(dim) + " is not a feasible index")
+                raise _Error(
+                    f"max(fixed_values.keys()) = {str(max(fixed_values.keys()))} >= dim=N={str(dim)} is not a feasible index"
+                )
             # convenience commenting functionality: drop negative keys
             for k in list(fixed_values.keys()):
                 if k < 0:
@@ -1718,36 +1718,31 @@ class GenoPheno(object):
             if vec is None or all(vec == default_val):
                 return True
 
-            if all([val is None or val == default_val for val in vec]):
-                    return True
-
-            return False
+            return all(val is None or val == default_val for val in vec)
 
         self.scales = array(scaling) if scaling is not None else None
         if vec_is_default(self.scales, 1):
             self.scales = 1  # CAVE: 1 is not array(1)
         elif self.scales.shape is not () and len(self.scales) != self.N:
-            raise _Error('len(scales) == ' + str(len(self.scales)) +
-                         ' does not match dimension N == ' + str(self.N))
+            raise _Error(
+                f'len(scales) == {len(self.scales)} does not match dimension N == {str(self.N)}'
+            )
 
         self.typical_x = array(typical_x) if typical_x is not None else None
         if vec_is_default(self.typical_x, 0):
             self.typical_x = 0
         elif self.typical_x.shape is not () and len(self.typical_x) != self.N:
-            raise _Error('len(typical_x) == ' + str(len(self.typical_x)) +
-                         ' does not match dimension N == ' + str(self.N))
+            raise _Error(
+                f'len(typical_x) == {len(self.typical_x)} does not match dimension N == {str(self.N)}'
+            )
 
-        if (self.scales is 1 and
-                self.typical_x is 0 and
-                self.fixed_values is None and
-                self.tf_pheno is None):
-            self.isidentity = True
-        else:
-            self.isidentity = False
-        if self.tf_pheno is None:
-            self.islinear = True
-        else:
-            self.islinear = False
+        self.isidentity = (
+            self.scales is 1
+            and self.typical_x is 0
+            and self.fixed_values is None
+            and self.tf_pheno is None
+        )
+        self.islinear = self.tf_pheno is None
 
     def pheno(self, x, into_bounds=None, copy=True, copy_always=False,
               archive=None, iteration=None):
@@ -1765,8 +1760,9 @@ class GenoPheno(object):
             into_bounds = (lambda x, copy=False:
                                 x if not copy else array(x, copy=copy))
         if copy_always and not copy:
-            raise ValueError('arguments copy_always=' + str(copy_always) +
-                             ' and copy=' + str(copy) + ' have inconsistent values')
+            raise ValueError(
+                f'arguments copy_always={str(copy_always)} and copy={str(copy)} have inconsistent values'
+            )
         if copy_always:
             x = array(x, copy=True)
             copy = False
@@ -2199,7 +2195,7 @@ class CMAAdaptSigmaCSA(CMAAdaptSigmaBase):
         mueff and possibly further options.
 
         """
-        self.disregard_length_setting = True if es.opts['CSA_disregard_length'] else False
+        self.disregard_length_setting = bool(es.opts['CSA_disregard_length'])
         if es.opts['CSA_clip_length_value'] is not None:
             try:
                 if len(es.opts['CSA_clip_length_value']) == 0:
@@ -2277,11 +2273,13 @@ class CMAAdaptSigmaCSA(CMAAdaptSigmaBase):
         es.sigma *= np.exp(s_clipped)
         # "error" handling
         if s_clipped != s:
-            _print_warning('sigma change exp(' + str(s) + ') = ' + str(np.exp(s)) +
-                          ' clipped to exp(+-' + str(self.max_delta_log_sigma) + ')',
-                          'update',
-                          'CMAAdaptSigmaCSA',
-                          es.countiter, es.opts['verbose'])
+            _print_warning(
+                f'sigma change exp({str(s)}) = {str(np.exp(s))} clipped to exp(+-{str(self.max_delta_log_sigma)})',
+                'update',
+                'CMAAdaptSigmaCSA',
+                es.countiter,
+                es.opts['verbose'],
+            )
 class CMAAdaptSigmaMedianImprovement(CMAAdaptSigmaBase):
     """Compares median fitness against a fitness percentile of the previous iteration,
     see Ait ElHara et al, GECCO 2013.
@@ -2787,7 +2785,7 @@ class CMAEvolutionStrategy(OOOptimizer):
         # extract/expand options
         N = self.N_pheno
         assert isinstance(opts['fixed_variables'], (str, dict)) \
-            or opts['fixed_variables'] is None
+                or opts['fixed_variables'] is None
         # TODO: in case of a string we need to eval the fixed_variables
         if isinstance(opts['fixed_variables'], dict):
             N = self.N_pheno - len(opts['fixed_variables'])
@@ -2803,9 +2801,9 @@ class CMAEvolutionStrategy(OOOptimizer):
         elif not self.boundary_handler.is_in_bounds(self.x0):
             if opts['verbose'] >= 0:
                 _print_warning('initial solution is out of the domain boundaries:')
-                print('  x0   = ' + str(self.gp.pheno(self.x0)))
-                print('  ldom = ' + str(self.boundary_handler.bounds[0]))
-                print('  udom = ' + str(self.boundary_handler.bounds[1]))
+                print(f'  x0   = {str(self.gp.pheno(self.x0))}')
+                print(f'  ldom = {str(self.boundary_handler.bounds[0])}')
+                print(f'  udom = {str(self.boundary_handler.bounds[1])}')
 
         # set self.mean to geno(x0)
         tf_geno_backup = self.gp.tf_geno
@@ -2837,7 +2835,7 @@ class CMAEvolutionStrategy(OOOptimizer):
         # initialization of state variables
         self.countiter = 0
         self.countevals = max((0, opts['verb_append'])) \
-            if not isinstance(opts['verb_append'], bool) else 0
+                if not isinstance(opts['verb_append'], bool) else 0
         self.pc = np.zeros(N)
         self.pc_neg = np.zeros(N)
         def eval_scaling_vector(in_):
@@ -2849,11 +2847,12 @@ class CMAEvolutionStrategy(OOOptimizer):
                                  instead of %d""" %
                                  (str(N), np.size(res)))
             return res
+
         self.sigma_vec = eval_scaling_vector(self.opts['CMA_stds'])
         if isfinite(self.opts['CMA_dampsvec_fac']):
             self.sigma_vec *= np.ones(N)  # make sure to get a vector
         self.sigma_vec0 = self.sigma_vec if isscalar(self.sigma_vec) \
-                                        else self.sigma_vec.copy()
+                                            else self.sigma_vec.copy()
         stds = eval_scaling_vector(self.opts['CMA_teststds'])
         if self.opts['CMA_diagonal']:  # is True or > 0
             # linear time and space complexity
@@ -2929,8 +2928,8 @@ class CMAEvolutionStrategy(OOOptimizer):
                     else:
                         s += str(np.floor(opts['CMA_diagonal']))
                     s += ' iterations'
-                    s += ' (1/ccov=' + str(round(1. / (self.sp.c1 + self.sp.cmu))) + ')'
-                print('   Covariance matrix is diagonal' + s)
+                    s += f' (1/ccov={str(round(1.0 / (self.sp.c1 + self.sp.cmu)))})'
+                print(f'   Covariance matrix is diagonal{s}')
 
     def _set_x0(self, x0):
         if x0 == str(x0):
@@ -3172,7 +3171,7 @@ class CMAEvolutionStrategy(OOOptimizer):
         arinj = []
         if hasattr(self, 'pop_injection_directions'):
             if self.countiter < 4 and \
-                    len(self.pop_injection_directions) > self.popsize - 2:
+                        len(self.pop_injection_directions) > self.popsize - 2:
                 _print_warning('  %d special injected samples with popsize %d, '
                                   % (len(self.pop_injection_directions), self.popsize)
                                + "popsize %d will be used" % (len(self.pop_injection_directions) + 2)
@@ -3182,10 +3181,9 @@ class CMAEvolutionStrategy(OOOptimizer):
                 if self.opts['CMA_sample_on_sphere_surface']:
                     y *= (self.N**0.5 if self.opts['CSA_squared'] else
                           self.const.chiN) / self.mahalanobis_norm(y)
-                    arinj.append(y)
                 else:
                     y *= self.random_rescaling_factor_to_mahalanobis_size(y) / self.sigma
-                    arinj.append(y)
+                arinj.append(y)
         # each row is a solution
         # the 1 is a small safeguard which needs to be removed to implement "pure" adaptive encoding
         arz = self.randn((max([1, (number - len(arinj))]), self.N))
@@ -3330,7 +3328,7 @@ class CMAEvolutionStrategy(OOOptimizer):
                 f_values[-1 - i] += m
         return f_values
 
-    def _mirror_idx_cov(self, f_values, idx1):  # will most likely be removed
+    def _mirror_idx_cov(self, f_values, idx1):    # will most likely be removed
         """obsolete and subject to removal (TODO),
         return indices for negative ("active") update of the covariance matrix
         assuming that ``f_values[idx1[i]]`` and ``f_values[-1-i]`` are
@@ -3351,10 +3349,7 @@ class CMAEvolutionStrategy(OOOptimizer):
 
         """
         idx2 = np.arange(len(f_values) - 1, len(f_values) - 1 - len(idx1), -1)
-        f = []
-        for i in rglen((idx1)):
-            f.append(min((f_values[idx1[i]], f_values[idx2[i]])))
-            # idx.append(idx1[i] if f_values[idx1[i]] > f_values[idx2[i]] else idx2[i])
+        f = [min((f_values[idx1[i]], f_values[idx2[i]])) for i in rglen((idx1))]
         return idx2[np.argsort(f)][-1::-1]
 
     def eval_mean(self, func, args=()):

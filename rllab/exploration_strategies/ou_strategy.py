@@ -55,9 +55,7 @@ class OUStrategy(ExplorationStrategy, Serializable):
 
 if __name__ == "__main__":
     ou = OUStrategy(env_spec=AttrDict(action_space=Box(low=-1, high=1, shape=(1,))), mu=0, theta=0.15, sigma=0.3)
-    states = []
-    for i in range(1000):
-        states.append(ou.evolve_state()[0])
+    states = [ou.evolve_state()[0] for _ in range(1000)]
     import matplotlib.pyplot as plt
 
     plt.plot(states)

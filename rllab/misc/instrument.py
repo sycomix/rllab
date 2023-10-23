@@ -87,7 +87,7 @@ class StubAttr(StubBase):
         return self.__dict__["_attr_name"]
 
     def __str__(self):
-        return "StubAttr(%s, %s)" % (str(self.obj), str(self.attr_name))
+        return f"StubAttr({str(self.obj)}, {str(self.attr_name)})"
 
 
 class StubMethodCall(StubBase, Serializable):
@@ -100,8 +100,7 @@ class StubMethodCall(StubBase, Serializable):
         self.kwargs = kwargs
 
     def __str__(self):
-        return "StubMethodCall(%s, %s, %s, %s)" % (
-            str(self.obj), str(self.method_name), str(self.args), str(self.kwargs))
+        return f"StubMethodCall({str(self.obj)}, {str(self.method_name)}, {str(self.args)}, {str(self.kwargs)})"
 
 
 class StubClass(StubBase):
@@ -109,7 +108,7 @@ class StubClass(StubBase):
         self.proxy_class = proxy_class
 
     def __call__(self, *args, **kwargs):
-        if len(args) > 0:
+        if args:
             # Convert the positional arguments to keyword arguments
             spec = inspect.getargspec(self.proxy_class.__init__)
             kwargs = dict(list(zip(spec.args[1:], args)), **kwargs)
@@ -128,12 +127,12 @@ class StubClass(StubBase):
         raise AttributeError
 
     def __str__(self):
-        return "StubClass(%s)" % self.proxy_class
+        return f"StubClass({self.proxy_class})"
 
 
 class StubObject(StubBase):
     def __init__(self, __proxy_class, *args, **kwargs):
-        if len(args) > 0:
+        if args:
             spec = inspect.getargspec(__proxy_class.__init__)
             kwargs = dict(list(zip(spec.args[1:], args)), **kwargs)
             args = tuple()
@@ -155,10 +154,10 @@ class StubObject(StubBase):
         # checks bypassed to allow for accesing instance fileds
         if hasattr(self.proxy_class, item):
             return StubAttr(self, item)
-        raise AttributeError('Cannot get attribute %s from %s' % (item, self.proxy_class))
+        raise AttributeError(f'Cannot get attribute {item} from {self.proxy_class}')
 
     def __str__(self):
-        return "StubObject(%s, *%s, **%s)" % (str(self.proxy_class), str(self.args), str(self.kwargs))
+        return f"StubObject({str(self.proxy_class)}, *{str(self.args)}, **{str(self.kwargs)})"
 
 
 class VariantDict(AttrDict):
@@ -215,14 +214,15 @@ class VariantGenerator(object):
         return VariantDict(variant, self._hidden_keys)
 
     def to_name_suffix(self, variant):
-        suffix = []
-        for k, vs, cfg in self._variants:
-            if not cfg.get("hide", False):
-                suffix.append(k + "_" + str(variant[k]))
+        suffix = [
+            f"{k}_{str(variant[k])}"
+            for k, vs, cfg in self._variants
+            if not cfg.get("hide", False)
+        ]
         return "_".join(suffix)
 
     def ivariants(self):
-        dependencies = list()
+        dependencies = []
         for key, vals, _ in self._variants:
             if hasattr(vals, "__call__"):
                 args = inspect.getargspec(vals).args
@@ -237,11 +237,11 @@ class VariantGenerator(object):
         while len(sorted_keys) < len(self._variants):
             # get all nodes with zero in-degree
             free_nodes = [k for k, v in dependencies if len(v) == 0]
-            if len(free_nodes) == 0:
+            if not free_nodes:
                 error_msg = "Invalid parameter dependency: \n"
                 for k, v in dependencies:
                     if len(v) > 0:
-                        error_msg += k + " depends on " + " & ".join(v) + "\n"
+                        error_msg += f"{k} depends on " + " & ".join(v) + "\n"
                 raise ValueError(error_msg)
             dependencies = [(k, v)
                             for k, v in dependencies if k not in free_nodes]
@@ -315,7 +315,7 @@ def query_yes_no(question, default="yes"):
     elif default == "no":
         prompt = " [y/N] "
     else:
-        raise ValueError("invalid default answer: '%s'" % default)
+        raise ValueError(f"invalid default answer: '{default}'")
 
     while True:
         sys.stdout.write(question + prompt)
@@ -438,8 +438,10 @@ def run_experiment_lite(
             task["exp_name"] = "%s_%s_%04d" % (
                 exp_prefix, timestamp, exp_count)
         if task.get("log_dir", None) is None:
-            task["log_dir"] = config.LOG_DIR + "/local/" + \
-                              exp_prefix.replace("_", "-") + "/" + task["exp_name"]
+            task["log_dir"] = (
+                (f"{config.LOG_DIR}/local/" + exp_prefix.replace("_", "-"))
+                + "/"
+            ) + task["exp_name"]
         if task.get("variant", None) is not None:
             variant = task.pop("variant")
             if "exp_name" not in variant:
@@ -453,8 +455,7 @@ def run_experiment_lite(
         task["env"]["RLLAB_USE_GPU"] = str(use_gpu)
 
     if mode not in ["local", "local_docker"] and not remote_confirmed and not dry and confirm_remote:
-        remote_confirmed = query_yes_no(
-            "Running in (non-dry) mode %s. Confirm?" % mode)
+        remote_confirmed = query_yes_no(f"Running in (non-dry) mode {mode}. Confirm?")
         if not remote_confirmed:
             sys.exit(1)
 
@@ -523,7 +524,6 @@ def run_experiment_lite(
                     p.terminate()
                 except OSError:
                     print("os error!")
-                    pass
                 p.wait()
     elif mode == "ec2":
         if docker_image is None:
@@ -551,6 +551,7 @@ def run_experiment_lite(
         s3_code_path = s3_sync_code(config, dry=dry)
         if docker_image is None:
             docker_image = config.DOCKER_IMAGE
+        wait_interval = 1
         for task in batch_tasks:
             # if 'env' in task:
             #     assert task.pop('env') is None
@@ -580,12 +581,11 @@ def run_experiment_lite(
             )
             with open(fname, "w") as fh:
                 fh.write(pod_str)
-            kubecmd = "kubectl create -f %s" % fname
+            kubecmd = f"kubectl create -f {fname}"
             print(kubecmd)
             if dry:
                 return
             retry_count = 0
-            wait_interval = 1
             while retry_count <= 5:
                 try:
                     return_code = subprocess.call(kubecmd, shell=True)
@@ -642,11 +642,11 @@ def _to_param_val(v):
 def to_local_command(params, python_command="python", script=osp.join(config.PROJECT_PATH,
                                                                       'scripts/run_experiment.py'),
                      use_gpu=False):
-    command = python_command + " " + script
+    command = f"{python_command} {script}"
     if use_gpu and not config.USE_TF:
-        command = "THEANO_FLAGS='device=gpu,dnn.enabled=auto,floatX=float32' " + command
+        command = f"THEANO_FLAGS='device=gpu,dnn.enabled=auto,floatX=float32' {command}"
     for k, v in config.ENV.items():
-        command = ("%s=%s " % (k, v)) + command
+        command = f"{k}={v} {command}"
     pre_commands = params.pop("pre_commands", None)
     post_commands = params.pop("post_commands", None)
     if pre_commands is not None or post_commands is not None:
@@ -656,12 +656,11 @@ def to_local_command(params, python_command="python", script=osp.join(config.PRO
         if isinstance(v, dict):
             for nk, nv in v.items():
                 if str(nk) == "_name":
-                    command += "  --%s %s" % (k, _to_param_val(nv))
+                    command += f"  --{k} {_to_param_val(nv)}"
                 else:
-                    command += \
-                        "  --%s_%s %s" % (k, nk, _to_param_val(nv))
+                    command += f"  --{k}_{nk} {_to_param_val(nv)}"
         else:
-            command += "  --%s %s" % (k, _to_param_val(v))
+            command += f"  --{k} {_to_param_val(v)}"
     return command
 
 
@@ -688,10 +687,7 @@ def to_docker_command(params, docker_image, python_command="python", script='scr
     # if not dry:
 
     # create volume for logging directory
-    if use_gpu:
-        command_prefix = "nvidia-docker run"
-    else:
-        command_prefix = "docker run"
+    command_prefix = "nvidia-docker run" if use_gpu else "docker run"
     docker_log_dir = config.DOCKER_LOG_DIR
 
     if env is None:
@@ -719,20 +715,28 @@ def to_docker_command(params, docker_image, python_command="python", script='scr
     )
     params = dict(params, log_dir=docker_log_dir)
     if use_tty:
-        command_prefix += " -ti " + docker_image + " /bin/bash -c "
+        command_prefix += f" -ti {docker_image} /bin/bash -c "
     else:
-        command_prefix += " -i " + docker_image + " /bin/bash -c "
-    command_list = list()
+        command_prefix += f" -i {docker_image} /bin/bash -c "
+    command_list = []
     if pre_commands is not None:
         command_list.extend(pre_commands)
-    command_list.append("echo \"Running in docker\"")
-    command_list.append(to_local_command(
-        params, python_command=python_command, script=osp.join(config.DOCKER_CODE_DIR, script), use_gpu=use_gpu))
+    command_list.extend(
+        (
+            "echo \"Running in docker\"",
+            to_local_command(
+                params,
+                python_command=python_command,
+                script=osp.join(config.DOCKER_CODE_DIR, script),
+                use_gpu=use_gpu,
+            ),
+        )
+    )
     # We for 2 min sleep after termination to allow for last syncs.
     if post_commands is None:
         post_commands = ['sleep 120']
     command_list.extend(post_commands)
-    return command_prefix + "'" + "; ".join(command_list) + "'"
+    return f"{command_prefix}'" + "; ".join(command_list) + "'"
 
 
 def dedent(s):
@@ -820,7 +824,7 @@ def launch_ec2(params_list, exp_prefix, docker_image, code_full_path,
             aws s3 cp --recursive {code_full_path} {local_code_path}
         """.format(code_full_path=code_full_path, local_code_path=config.DOCKER_CODE_DIR))
 
-    s3_mujoco_key_path = config.AWS_CODE_SYNC_S3_PATH + '/.mujoco/'
+    s3_mujoco_key_path = f'{config.AWS_CODE_SYNC_S3_PATH}/.mujoco/'
     # sio.write("""
     #     aws s3 cp --recursive {} {} --region {}
     # """.format(s3_mujoco_key_path, config.MUJOCO_KEY_PATH, config.AWS_REGION_NAME))
@@ -990,6 +994,7 @@ def launch_ec2(params_list, exp_prefix, docker_image, code_full_path,
     print("************************************************************")
     print(instance_args["UserData"])
     print("************************************************************")
+    import pprint
     if aws_config["spot"]:
         instance_args["UserData"] = base64.b64encode(instance_args["UserData"].encode()).decode("utf-8")
         spot_args = dict(
@@ -999,7 +1004,6 @@ def launch_ec2(params_list, exp_prefix, docker_image, code_full_path,
             SpotPrice=aws_config["spot_price"],
             # ClientToken=params_list[0]["exp_name"],
         )
-        import pprint
         pprint.pprint(spot_args)
         if not dry:
             response = ec2.request_spot_instances(**spot_args)
@@ -1018,7 +1022,6 @@ def launch_ec2(params_list, exp_prefix, docker_image, code_full_path,
                 except botocore.exceptions.ClientError:
                     continue
     else:
-        import pprint
         pprint.pprint(instance_args)
         ec2.create_instances(
             DryRun=dry,
@@ -1033,9 +1036,9 @@ def s3_sync_code(config, dry=False, added_project_directories=[]):
     global S3_CODE_PATH
     if S3_CODE_PATH is not None:
         return S3_CODE_PATH
-    base = config.AWS_CODE_SYNC_S3_PATH
     has_git = True
 
+    base = config.AWS_CODE_SYNC_S3_PATH
     if config.FAST_CODE_SYNC:
         try:
             current_commit = subprocess.check_output(
@@ -1044,11 +1047,17 @@ def s3_sync_code(config, dry=False, added_project_directories=[]):
             print("Warning: failed to execute git commands")
             current_commit = None
 
-        file_name = str(timestamp) + "_" + hashlib.sha224(
-            subprocess.check_output(["pwd"]) + str(current_commit).encode() + str(timestamp).encode()
-        ).hexdigest() + ".tar.gz"
+        file_name = (
+            f"{str(timestamp)}_"
+            + hashlib.sha224(
+                subprocess.check_output(["pwd"])
+                + str(current_commit).encode()
+                + str(timestamp).encode()
+            ).hexdigest()
+            + ".tar.gz"
+        )
 
-        file_path = "/tmp/" + file_name
+        file_path = f"/tmp/{file_name}"
 
         tar_cmd = ["tar", "-zcvf", file_path, "-C", config.PROJECT_PATH]
 
@@ -1061,12 +1070,17 @@ def s3_sync_code(config, dry=False, added_project_directories=[]):
             tar_cmd.append(path)
             tar_cmd += ["."]
 
-        remote_path = "%s/%s" % (base, file_name)
+        remote_path = f"{base}/{file_name}"
 
         upload_cmd = ["aws", "s3", "cp", file_path, remote_path]
 
         mujoco_key_cmd = [
-            "aws", "s3", "sync", config.MUJOCO_KEY_PATH, "{}/.mujoco/".format(base)]
+            "aws",
+            "s3",
+            "sync",
+            config.MUJOCO_KEY_PATH,
+            f"{base}/.mujoco/",
+        ]
 
         print(" ".join(tar_cmd))
         print(" ".join(upload_cmd))
@@ -1092,24 +1106,40 @@ def s3_sync_code(config, dry=False, added_project_directories=[]):
             print("Warning: failed to execute git commands")
             has_git = False
         dir_hash = base64.b64encode(subprocess.check_output(["pwd"])).decode("utf-8")
-        code_path = "%s_%s" % (
-            dir_hash,
-            (current_commit if clean_state else "%s_dirty_%s" % (current_commit, timestamp)) if
-            has_git else timestamp
+        code_path = f'{dir_hash}_{(current_commit if clean_state else f"{current_commit}_dirty_{timestamp}") if has_git else timestamp}'
+        full_path = f"{base}/{code_path}"
+        cache_path = f"{base}/{dir_hash}"
+        cache_cmds = (
+            ["aws", "s3", "cp", "--recursive"]
+            + flatten(
+                ["--exclude", f"{pattern}"]
+                for pattern in config.CODE_SYNC_IGNORES
+            )
+            + [cache_path, full_path]
         )
-        full_path = "%s/%s" % (base, code_path)
-        cache_path = "%s/%s" % (base, dir_hash)
-        cache_cmds = ["aws", "s3", "cp", "--recursive"] + \
-                     flatten(["--exclude", "%s" % pattern] for pattern in config.CODE_SYNC_IGNORES) + \
-                     [cache_path, full_path]
-        cmds = ["aws", "s3", "cp", "--recursive"] + \
-               flatten(["--exclude", "%s" % pattern] for pattern in config.CODE_SYNC_IGNORES) + \
-               [".", full_path]
-        caching_cmds = ["aws", "s3", "cp", "--recursive"] + \
-                       flatten(["--exclude", "%s" % pattern] for pattern in config.CODE_SYNC_IGNORES) + \
-                       [full_path, cache_path]
+        cmds = (
+            ["aws", "s3", "cp", "--recursive"]
+            + flatten(
+                ["--exclude", f"{pattern}"]
+                for pattern in config.CODE_SYNC_IGNORES
+            )
+            + [".", full_path]
+        )
+        caching_cmds = (
+            ["aws", "s3", "cp", "--recursive"]
+            + flatten(
+                ["--exclude", f"{pattern}"]
+                for pattern in config.CODE_SYNC_IGNORES
+            )
+            + [full_path, cache_path]
+        )
         mujoco_key_cmd = [
-            "aws", "s3", "sync", config.MUJOCO_KEY_PATH, "{}/.mujoco/".format(base)]
+            "aws",
+            "s3",
+            "sync",
+            config.MUJOCO_KEY_PATH,
+            f"{base}/.mujoco/",
+        ]
         print(cache_cmds, cmds, caching_cmds, mujoco_key_cmd)
         if not dry:
             subprocess.check_call(cache_cmds)

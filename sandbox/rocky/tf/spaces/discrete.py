@@ -65,9 +65,7 @@ class Discrete(Space):
         return tf.uint8
 
     def __eq__(self, other):
-        if not isinstance(other, Discrete):
-            return False
-        return self.n == other.n
+        return False if not isinstance(other, Discrete) else self.n == other.n
 
     def __hash__(self):
         return hash(self.n)

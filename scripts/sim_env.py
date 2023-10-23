@@ -119,7 +119,7 @@ def visualize_env(env, mode, max_steps=sys.maxsize, speedup=1):
         # plt.show()
 
     else:
-        raise ValueError('Unsupported mode: %s' % mode)
+        raise ValueError(f'Unsupported mode: {mode}')
         # env.stop_viewer()
 
 

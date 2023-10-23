@@ -41,11 +41,7 @@ class CategoricalLSTMPolicy(StochasticPolicy, LayersPowered, Serializable):
             obs_dim = env_spec.observation_space.flat_dim
             action_dim = env_spec.action_space.flat_dim
 
-            if state_include_action:
-                input_dim = obs_dim + action_dim
-            else:
-                input_dim = obs_dim
-
+            input_dim = obs_dim + action_dim if state_include_action else obs_dim
             l_input = L.InputLayer(
                 shape=(None, None, input_dim),
                 name="input"
@@ -141,14 +137,13 @@ class CategoricalLSTMPolicy(StochasticPolicy, LayersPowered, Serializable):
                     {self.l_input: all_input_var}
                 )
             )
-        else:
-            flat_input_var = tf.reshape(all_input_var, (-1, self.input_dim))
-            return dict(
-                prob=L.get_output(
-                    self.prob_network.output_layer,
-                    {self.l_input: all_input_var, self.feature_network.input_layer: flat_input_var}
-                )
+        flat_input_var = tf.reshape(all_input_var, (-1, self.input_dim))
+        return dict(
+            prob=L.get_output(
+                self.prob_network.output_layer,
+                {self.l_input: all_input_var, self.feature_network.input_layer: flat_input_var}
             )
+        )
 
     @property
     def vectorized(self):

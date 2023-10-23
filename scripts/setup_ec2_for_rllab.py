@@ -127,22 +127,20 @@ def setup_iam():
         inst_profiles = existing_role.instance_profiles.all()
         for prof in inst_profiles:
             for role in prof.roles:
-                print("Removing role %s from instance profile %s" % (role.name, prof.name))
+                print(f"Removing role {role.name} from instance profile {prof.name}")
                 prof.remove_role(RoleName=role.name)
-            print("Deleting instance profile %s" % prof.name)
+            print(f"Deleting instance profile {prof.name}")
             prof.delete()
         for policy in existing_role.policies.all():
-            print("Deleting inline policy %s" % policy.name)
+            print(f"Deleting inline policy {policy.name}")
             policy.delete()
         for policy in existing_role.attached_policies.all():
-            print("Detaching policy %s" % policy.arn)
+            print(f"Detaching policy {policy.arn}")
             existing_role.detach_policy(PolicyArn=policy.arn)
         print("Deleting role")
         existing_role.delete()
     except botocore.exceptions.ClientError as e:
-        if e.response['Error']['Code'] == 'NoSuchEntity':
-            pass
-        else:
+        if e.response['Error']['Code'] != 'NoSuchEntity':
             raise e
 
     print("Creating role rllab")
@@ -206,7 +204,7 @@ def setup_iam():
 
 
 def setup_s3():
-    print("Creating S3 bucket at s3://%s" % S3_BUCKET_NAME)
+    print(f"Creating S3 bucket at s3://{S3_BUCKET_NAME}")
     s3_client = boto3.client(
         "s3",
         aws_access_key_id=ACCESS_KEY,
@@ -219,7 +217,9 @@ def setup_s3():
         )
     except botocore.exceptions.ClientError as e:
         if e.response['Error']['Code'] == 'BucketAlreadyExists':
-            raise ValueError("Bucket %s already exists. Please reconfigure S3_BUCKET_NAME" % S3_BUCKET_NAME) from e
+            raise ValueError(
+                f"Bucket {S3_BUCKET_NAME} already exists. Please reconfigure S3_BUCKET_NAME"
+            ) from e
         elif e.response['Error']['Code'] == 'BucketAlreadyOwnedByYou':
             print("Bucket already created by you")
         else:
@@ -229,7 +229,7 @@ def setup_s3():
 
 def setup_ec2():
     for region in ["us-east-1", "us-west-1", "us-west-2"]:
-        print("Setting up region %s" % region)
+        print(f"Setting up region {region}")
 
         ec2 = boto3.resource(
             "ec2",
@@ -244,49 +244,48 @@ def setup_ec2():
             aws_secret_access_key=ACCESS_SECRET,
         )
         existing_vpcs = list(ec2.vpcs.all())
-        assert len(existing_vpcs) >= 1
+        assert existing_vpcs
         vpc = existing_vpcs[0]
-        print("Creating security group in VPC %s" % str(vpc.id))
+        print(f"Creating security group in VPC {str(vpc.id)}")
         try:
             security_group = vpc.create_security_group(
                 GroupName='rllab-sg', Description='Security group for rllab'
             )
         except botocore.exceptions.ClientError as e:
-            if e.response['Error']['Code'] == 'InvalidGroup.Duplicate':
-                sgs = list(vpc.security_groups.filter(GroupNames=['rllab-sg']))
-                security_group = sgs[0]
-            else:
+            if e.response['Error']['Code'] != 'InvalidGroup.Duplicate':
                 raise e
 
+            sgs = list(vpc.security_groups.filter(GroupNames=['rllab-sg']))
+            security_group = sgs[0]
         ALL_REGION_AWS_SECURITY_GROUP_IDS[region] = [security_group.id]
 
         ec2_client.create_tags(Resources=[security_group.id], Tags=[{'Key': 'Name', 'Value': 'rllab-sg'}])
         try:
             security_group.authorize_ingress(FromPort=22, ToPort=22, IpProtocol='tcp', CidrIp='0.0.0.0/0')
         except botocore.exceptions.ClientError as e:
-            if e.response['Error']['Code'] == 'InvalidPermission.Duplicate':
-                pass
-            else:
+            if e.response['Error']['Code'] != 'InvalidPermission.Duplicate':
                 raise e
-        print("Security group created with id %s" % str(security_group.id))
+        print(f"Security group created with id {str(security_group.id)}")
 
-        key_name = 'rllab-%s' % region
+        key_name = f'rllab-{region}'
         try:
-            print("Trying to create key pair with name %s" % key_name)
+            print(f"Trying to create key pair with name {key_name}")
             key_pair = ec2_client.create_key_pair(KeyName=key_name)
         except botocore.exceptions.ClientError as e:
-            if e.response['Error']['Code'] == 'InvalidKeyPair.Duplicate':
-                if not query_yes_no("Key pair with name %s exists. Proceed to delete and recreate?" % key_name, "no"):
-                    sys.exit()
-                print("Deleting existing key pair with name %s" % key_name)
-                ec2_client.delete_key_pair(KeyName=key_name)
-                print("Recreating key pair with name %s" % key_name)
-                key_pair = ec2_client.create_key_pair(KeyName=key_name)
-            else:
+            if e.response['Error']['Code'] != 'InvalidKeyPair.Duplicate':
                 raise e
 
+            if not query_yes_no(
+                f"Key pair with name {key_name} exists. Proceed to delete and recreate?",
+                "no",
+            ):
+                sys.exit()
+            print(f"Deleting existing key pair with name {key_name}")
+            ec2_client.delete_key_pair(KeyName=key_name)
+            print(f"Recreating key pair with name {key_name}")
+            key_pair = ec2_client.create_key_pair(KeyName=key_name)
         key_pair_folder_path = os.path.join(config.PROJECT_PATH, "private", "key_pairs")
-        file_name = os.path.join(key_pair_folder_path, "%s.pem" % key_name)
+        file_name = os.path.join(key_pair_folder_path, f"{key_name}.pem")
 
         print("Saving keypair file")
         console.mkdir_p(key_pair_folder_path)
@@ -294,7 +293,7 @@ def setup_ec2():
             handle.write(key_pair['KeyMaterial'] + '\n')
 
         # adding pem file to ssh
-        os.system("ssh-add %s" % file_name)
+        os.system(f"ssh-add {file_name}")
 
         ALL_REGION_AWS_KEY_NAMES[region] = key_name
 
@@ -340,7 +339,7 @@ def query_yes_no(question, default="yes"):
     elif default == "no":
         prompt = " [y/N] "
     else:
-        raise ValueError("invalid default answer: '%s'" % default)
+        raise ValueError(f"invalid default answer: '{default}'")
 
     while True:
         sys.stdout.write(question + prompt)

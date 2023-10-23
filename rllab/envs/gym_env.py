@@ -69,23 +69,22 @@ class GymEnv(Env, Serializable):
         self.env = env
         self.env_id = env.spec.id
 
-        assert not (not record_log and record_video)
+        assert record_log or not record_video
 
         if log_dir is None or record_log is False:
             self.monitoring = False
         else:
             if not record_video:
                 video_schedule = NoVideoSchedule()
-            else:
-                if video_schedule is None:
-                    video_schedule = CappedCubicVideoSchedule()
+            elif video_schedule is None:
+                video_schedule = CappedCubicVideoSchedule()
             self.env = gym.wrappers.Monitor(self.env, log_dir, video_callable=video_schedule, force=True)
             self.monitoring = True
 
         self._observation_space = convert_gym_space(env.observation_space)
-        logger.log("observation space: {}".format(self._observation_space))
+        logger.log(f"observation space: {self._observation_space}")
         self._action_space = convert_gym_space(env.action_space)
-        logger.log("action space: {}".format(self._action_space))
+        logger.log(f"action space: {self._action_space}")
         self._horizon = env.spec.tags['wrapper_config.TimeLimit.max_episode_steps']
         self._log_dir = log_dir
         self._force_reset = force_reset

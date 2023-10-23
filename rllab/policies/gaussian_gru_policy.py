@@ -153,7 +153,4 @@ class GaussianGRUPolicy(StochasticPolicy, LasagnePowered):
 
     @property
     def state_info_keys(self):
-        if self._state_include_action:
-            return ["prev_action"]
-        else:
-            return []
+        return ["prev_action"] if self._state_include_action else []

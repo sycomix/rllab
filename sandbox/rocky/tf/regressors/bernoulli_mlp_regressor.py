@@ -129,15 +129,12 @@ class BernoulliMLPRegressor(LayersPowered, Serializable):
             inputs = [xs, ys]
             optimizer = self.optimizer
         loss_before = optimizer.loss(inputs)
-        if self.name:
-            prefix = self.name + "_"
-        else:
-            prefix = ""
-        logger.record_tabular(prefix + 'LossBefore', loss_before)
+        prefix = f"{self.name}_" if self.name else ""
+        logger.record_tabular(f'{prefix}LossBefore', loss_before)
         optimizer.optimize(inputs)
         loss_after = optimizer.loss(inputs)
-        logger.record_tabular(prefix + 'LossAfter', loss_after)
-        logger.record_tabular(prefix + 'dLoss', loss_before - loss_after)
+        logger.record_tabular(f'{prefix}LossAfter', loss_after)
+        logger.record_tabular(f'{prefix}dLoss', loss_before - loss_after)
         self.first_optimized = True
 
     def predict(self, xs):

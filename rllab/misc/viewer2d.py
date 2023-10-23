@@ -72,10 +72,7 @@ class Viewer2D(object):
         return size * self.scale_factor
 
     def line(self, color, p1, p2, width=None):
-        if width is None:
-            width = 1
-        else:
-            width = int(width * self.scale_factor)
+        width = 1 if width is None else int(width * self.scale_factor)
         x1, y1 = self.scale_point(p1)
         x2, y2 = self.scale_point(p2)
         pygame.draw.line(self.screen, color, (x1, y1), (x2, y2), width)

@@ -41,11 +41,13 @@ def _worker_rollout_policy(G, args):
         paths.append(path)
         returns.append(path["returns"])
         undiscounted_returns.append(path["undiscounted_return"])
-    
-    result_path = {'full_paths':paths}
-    result_path['undiscounted_return'] = _get_stderr_lb(undiscounted_returns)
+
+    result_path = {
+        'full_paths': paths,
+        'undiscounted_return': _get_stderr_lb(undiscounted_returns),
+    }
     result_path['returns'] = _get_stderr_lb_varyinglens(returns)
-       
+
     # not letting n_evals count towards below cases since n_evals is multiple eval for single paramset
     if args["criterion"] == "samples":
         inc = len(path["rewards"])

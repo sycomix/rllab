@@ -10,11 +10,7 @@ DOCKER_LOG_DIR = "/tmp/expt"
 
 AWS_IMAGE_ID = "ami-67c5d00d"
 
-if USE_GPU:
-    AWS_INSTANCE_TYPE = "g2.2xlarge"
-else:
-    AWS_INSTANCE_TYPE = "c4.2xlarge"
-
+AWS_INSTANCE_TYPE = "g2.2xlarge" if USE_GPU else "c4.2xlarge"
 AWS_KEY_NAME = "research_virginia"
 
 AWS_SPOT = True

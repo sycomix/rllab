@@ -75,9 +75,9 @@ class StatefulPool(object):
             results = self.pool.map_async(
                 _worker_run_each, [(runner, args) for args in args_list]
             )
-            for i in range(self.n_parallel):
+            for _ in range(self.n_parallel):
                 self.worker_queue.get()
-            for i in range(self.n_parallel):
+            for _ in range(self.n_parallel):
                 self.queue.put(None)
             return results.get()
         return [runner(self.G, *args_list[0])]
@@ -86,15 +86,13 @@ class StatefulPool(object):
         if self.n_parallel > 1:
             return self.pool.map(_worker_run_map, [(runner, args) for args in args_list])
         else:
-            ret = []
-            for args in args_list:
-                ret.append(runner(self.G, *args))
-            return ret
+            return [runner(self.G, *args) for args in args_list]
 
     def run_imap_unordered(self, runner, args_list):
         if self.n_parallel > 1:
-            for x in self.pool.imap_unordered(_worker_run_map, [(runner, args) for args in args_list]):
-                yield x
+            yield from self.pool.imap_unordered(
+                _worker_run_map, [(runner, args) for args in args_list]
+            )
         else:
             for args in args_list:
                 yield runner(self.G, *args)

@@ -188,9 +188,7 @@ class XmlFixture(XmlElem):
 
 
 def _get_name(x):
-    if isinstance(x.userData, dict):
-        return x.userData.get('name')
-    return None
+    return x.userData.get('name') if isinstance(x.userData, dict) else None
 
 
 def find_body(world, name):

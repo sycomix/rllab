@@ -27,7 +27,7 @@ def run_experiment(argv):
     rand_id = str(uuid.uuid4())[:5]
     timestamp = now.strftime('%Y_%m_%d_%H_%M_%S_%f_%Z')
 
-    default_exp_name = 'experiment_%s_%s' % (timestamp, rand_id)
+    default_exp_name = f'experiment_{timestamp}_{rand_id}'
     parser = argparse.ArgumentParser()
     parser.add_argument('--n_parallel', type=int, default=1,
                         help='Number of parallel workers to perform rollouts. 0 => don\'t start any workers')
@@ -106,26 +106,22 @@ def run_experiment(argv):
     logger.set_snapshot_mode(args.snapshot_mode)
     logger.set_snapshot_gap(args.snapshot_gap)
     logger.set_log_tabular_only(args.log_tabular_only)
-    logger.push_prefix("[%s] " % args.exp_name)
+    logger.push_prefix(f"[{args.exp_name}] ")
 
     if args.resume_from is not None:
         data = joblib.load(args.resume_from)
         assert 'algo' in data
         algo = data['algo']
         algo.train()
+    elif args.use_cloudpickle:
+        import cloudpickle
+        method_call = cloudpickle.loads(base64.b64decode(args.args_data))
+        method_call(variant_data)
     else:
-        # read from stdin
-        if args.use_cloudpickle:
-            import cloudpickle
-            method_call = cloudpickle.loads(base64.b64decode(args.args_data))
-            method_call(variant_data)
-        else:
-            data = pickle.loads(base64.b64decode(args.args_data))
-            maybe_iter = concretize(data)
-            if is_iterable(maybe_iter):
-                for _ in maybe_iter:
-                    pass
-
+        data = pickle.loads(base64.b64decode(args.args_data))
+        maybe_iter = concretize(data)
+        if is_iterable(maybe_iter):
+            pass
     logger.set_snapshot_mode(prev_mode)
     logger.set_snapshot_dir(prev_snapshot_dir)
     logger.remove_tabular_output(tabular_log_file)

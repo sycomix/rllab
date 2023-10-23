@@ -3,7 +3,7 @@ import os
 
 PROJECT_PATH = osp.abspath(osp.join(osp.dirname(__file__), '..'))
 
-LOG_DIR = PROJECT_PATH + "/data"
+LOG_DIR = f"{PROJECT_PATH}/data"
 
 USE_TF = False
 
@@ -15,7 +15,7 @@ KUBE_PREFIX = "rllab_"
 
 DOCKER_LOG_DIR = "/tmp/expt"
 
-POD_DIR = PROJECT_PATH + "/.pods"
+POD_DIR = f"{PROJECT_PATH}/.pods"
 
 AWS_S3_PATH = None
 

@@ -20,10 +20,7 @@ def gauss_newton_product(cost, p, v, s):  # this computes the product Gv = J'HJv
         HJv = T.grad(T.sum(T.grad(cost, si, disconnected_inputs='ignore') * Jv), si, consider_constant=[Jv], disconnected_inputs='ignore')
         Gv = T.grad(T.sum(HJv * si), p, consider_constant=[HJv, Jv], disconnected_inputs='ignore')
         Gv = list(map(T.as_tensor_variable, Gv))  # for CudaNdarray
-        if sum_Gv is None:
-            sum_Gv = Gv
-        else:
-            sum_Gv = [a+b for a, b in zip(Gv, sum_Gv)]
+        sum_Gv = Gv if sum_Gv is None else [a+b for a, b in zip(Gv, sum_Gv)]
     return sum_Gv
 
 
@@ -336,9 +333,15 @@ class SequenceDataset:
             if batch_size is None:
                 self.items.append([data[i][i_sequence] for i in range(len(data))])
             else:
-                for i_step in range(0, len(data[0][i_sequence]) - minimum_size + 1, batch_size):
-                    self.items.append([data[i][i_sequence][i_step:i_step + batch_size] for i in range(len(data))])
-
+                self.items.extend(
+                    [
+                        data[i][i_sequence][i_step : i_step + batch_size]
+                        for i in range(len(data))
+                    ]
+                    for i_step in range(
+                        0, len(data[0][i_sequence]) - minimum_size + 1, batch_size
+                    )
+                )
         self.shuffle()
 
     def shuffle(self):

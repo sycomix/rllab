@@ -53,11 +53,9 @@ def _get_info(cls_or_fn):
     if isinstance(cls_or_fn, type):
         if hasattr(cls_or_fn.__init__, '_autoargs_info'):
             return cls_or_fn.__init__._autoargs_info
-        return {}
-    else:
-        if hasattr(cls_or_fn, '_autoargs_info'):
-            return cls_or_fn._autoargs_info
-        return {}
+    elif hasattr(cls_or_fn, '_autoargs_info'):
+        return cls_or_fn._autoargs_info
+    return {}
 
 
 def _t_or_f(s):
@@ -67,7 +65,7 @@ def _t_or_f(s):
     elif ua == 'FALSE'[:len(ua)]:
         return False
     else:
-        raise ValueError('Unrecognized boolean value: %s' % s)
+        raise ValueError(f'Unrecognized boolean value: {s}')
 
 
 def add_args(_):
@@ -80,11 +78,13 @@ def add_args(_):
             if type == bool:
                 type = _t_or_f
             parser.add_argument(
-                '--' + prefix_ + arg_name,
+                f'--{prefix_}{arg_name}',
                 help=arg_info['help'],
                 choices=arg_info['choices'],
                 type=type,
-                nargs=arg_info['nargs'])
+                nargs=arg_info['nargs'],
+            )
+
     return _add_args
 
 
@@ -99,15 +99,11 @@ def new_from_args(_):
             if hasattr(parsed_args, prefixed_arg_name):
                 val = getattr(parsed_args, prefixed_arg_name)
                 if val is not None:
-                    if arg_info['mapper']:
-                        params[arg_name] = arg_info['mapper'](val)
-                    else:
-                        params[arg_name] = val
+                    params[arg_name] = arg_info['mapper'](val) if arg_info['mapper'] else val
                     if not silent:
-                        print(colorize(
-                            "using argument %s with value %s" % (arg_name, val),
-                            "yellow"))
+                        print(colorize(f"using argument {arg_name} with value {val}", "yellow"))
         return cls(*args, **params)
+
     return _new_from_args
 
 

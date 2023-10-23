@@ -34,10 +34,7 @@ class EmbeddedViewer(object):
 
     def set_model(self, model):
         self.model = model
-        if model:
-            self.data = model.data
-        else:
-            self.data = None
+        self.data = model.data if model else None
         if self.running:
             if model:
                 mjlib.mjr_makeContext(model.ptr, byref(self.con), 150)

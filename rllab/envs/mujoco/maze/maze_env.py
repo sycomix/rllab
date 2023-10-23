@@ -137,7 +137,7 @@ class MazeEnv(ProxyEnv, Serializable):
         # Get all line segments of the goal and the obstacles
         for i in range(len(structure)):
             for j in range(len(structure[0])):
-                if structure[i][j] == 1 or structure[i][j] == 'g':
+                if structure[i][j] in [1, 'g']:
                     cx = j * size_scaling - self._init_torso_x
                     cy = i * size_scaling - self._init_torso_y
                     x1 = cx - 0.5 * size_scaling
@@ -150,12 +150,13 @@ class MazeEnv(ProxyEnv, Serializable):
                         ((x2, y2), (x1, y2)),
                         ((x1, y2), (x1, y1)),
                     ]
-                    for seg in struct_segments:
-                        segments.append(dict(
+                    segments.extend(
+                        dict(
                             segment=seg,
                             type=structure[i][j],
-                        ))
-
+                        )
+                        for seg in struct_segments
+                    )
         wall_readings = np.zeros(self._n_bins)
         goal_readings = np.zeros(self._n_bins)
 
@@ -171,7 +172,7 @@ class MazeEnv(ProxyEnv, Serializable):
                         ray_ori=ray_ori,
                         distance=point_distance(p, (robot_x, robot_y)),
                     ))
-            if len(ray_segments) > 0:
+            if ray_segments:
                 first_seg = sorted(ray_segments, key=lambda x: x["distance"])[0]
                 # print first_seg
                 if first_seg["type"] == 1:
@@ -185,11 +186,7 @@ class MazeEnv(ProxyEnv, Serializable):
                 else:
                     assert False
 
-        obs = np.concatenate([
-            wall_readings,
-            goal_readings
-        ])
-        return obs
+        return np.concatenate([wall_readings, goal_readings])
 
     def get_current_robot_obs(self):
         return self.wrapped_env.get_current_obs()
@@ -313,11 +310,9 @@ class MazeEnv(ProxyEnv, Serializable):
             logger.record_tabular_misc_stat('Return', gather_undiscounted_returns, placement='front')
         stripped_paths = []
         for path in paths:
-            stripped_path = {}
-            for k, v in path.items():
-                stripped_path[k] = v
+            stripped_path = dict(path.items())
             stripped_path['observations'] = \
-                stripped_path['observations'][:, :self.wrapped_env.observation_space.flat_dim]
+                    stripped_path['observations'][:, :self.wrapped_env.observation_space.flat_dim]
             #  this breaks if the obs of the robot are d>1 dimensional (not a vector)
             stripped_paths.append(stripped_path)
         with logger.tabular_prefix('wrapped_'):

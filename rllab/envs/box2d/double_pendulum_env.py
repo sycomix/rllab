@@ -43,11 +43,9 @@ class DoublePendulumEnv(Box2DEnv, Serializable):
     def get_tip_pos(self):
         cur_center_pos = self.link2.position
         cur_angle = self.link2.angle
-        cur_pos = (
-            cur_center_pos[0] - self.link_len*np.sin(cur_angle),
-            cur_center_pos[1] - self.link_len*np.cos(cur_angle)
-        )
-        return cur_pos
+        return cur_center_pos[0] - self.link_len * np.sin(
+            cur_angle
+        ), cur_center_pos[1] - self.link_len * np.cos(cur_angle)
 
     @overrides
     def compute_reward(self, action):

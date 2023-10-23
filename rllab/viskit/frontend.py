@@ -24,9 +24,7 @@ def sliding_mean(data_array, window=5):
     for i in range(len(data_array)):
         indices = list(range(max(i - window + 1, 0),
                         min(i + window + 1, len(data_array))))
-        avg = 0
-        for j in indices:
-            avg += data_array[j]
+        avg = sum(data_array[j] for j in indices)
         avg /= float(len(indices))
         new_list.append(avg)
 
@@ -71,30 +69,34 @@ def make_plot(plot_list, use_median=False, plot_width=None, plot_height=None, ti
             y_upper = list(plt.means + plt.stds)
             y_lower = list(plt.means - plt.stds)
 
-        data.append(go.Scatter(
-            x=x + x[::-1],
-            y=y_upper + y_lower[::-1],
-            fill='tozerox',
-            fillcolor=core.hex_to_rgb(color, 0.2),
-            line=go.Line(color='transparent'),
-            showlegend=False,
-            legendgroup=plt.legend,
-            hoverinfo='none'
-        ))
-        data.append(go.Scatter(
-            x=x,
-            y=y,
-            name=plt.legend,
-            legendgroup=plt.legend,
-            line=dict(color=core.hex_to_rgb(color)),
-        ))
+        data.extend(
+            (
+                go.Scatter(
+                    x=x + x[::-1],
+                    y=y_upper + y_lower[::-1],
+                    fill='tozerox',
+                    fillcolor=core.hex_to_rgb(color, 0.2),
+                    line=go.Line(color='transparent'),
+                    showlegend=False,
+                    legendgroup=plt.legend,
+                    hoverinfo='none',
+                ),
+                go.Scatter(
+                    x=x,
+                    y=y,
+                    name=plt.legend,
+                    legendgroup=plt.legend,
+                    line=dict(color=core.hex_to_rgb(color)),
+                ),
+            )
+        )
     p25str = '['
     p50str = '['
     p75str = '['
     for p25e, p50e, p75e in zip(p25, p50, p75):
-        p25str += (str(p25e) + ',')
-        p50str += (str(p50e) + ',')
-        p75str += (str(p75e) + ',')
+        p25str += f'{str(p25e)},'
+        p50str += f'{str(p50e)},'
+        p75str += f'{str(p75e)},'
     p25str += ']'
     p50str += ']'
     p75str += ']'
@@ -115,14 +117,15 @@ def make_plot(plot_list, use_median=False, plot_width=None, plot_height=None, ti
     )
     fig = go.Figure(data=data, layout=layout)
     fig_div = po.plot(fig, output_type='div', include_plotlyjs=False)
-    if "footnote" in plot_list[0]:
-        footnote = "<br />".join([
-            r"<span><b>%s</b></span>: <span>%s</span>" % (plt.legend, plt.footnote)
-            for plt in plot_list
-        ])
-        return r"%s<div>%s</div>" % (fig_div, footnote)
-    else:
+    if "footnote" not in plot_list[0]:
         return fig_div
+    footnote = "<br />".join(
+        [
+            f"<span><b>{plt.legend}</b></span>: <span>{plt.footnote}</span>"
+            for plt in plot_list
+        ]
+    )
+    return f"{fig_div}<div>{footnote}</div>"
 
 
 def make_plot_eps(plot_list, use_median=False, counter=0):
@@ -191,11 +194,11 @@ def make_plot_eps(plot_list, use_median=False, counter=0):
             legobj.set_linewidth(5.0)
 
         def y_fmt(x, y):
-            return str(int(np.round(x / 1000.0))) + 'K'
+            return f'{int(np.round(x / 1000.0))}K'
 
         import matplotlib.ticker as tick
         #         ax.xaxis.set_major_formatter(tick.FuncFormatter(y_fmt))
-        _plt.savefig('tmp' + str(counter) + '.pdf', bbox_inches='tight')
+        _plt.savefig(f'tmp{str(counter)}.pdf', bbox_inches='tight')
 
 
 def summary_name(exp, selector=None):

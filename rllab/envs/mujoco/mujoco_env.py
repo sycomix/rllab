@@ -139,22 +139,23 @@ class MujocoEnv(Env):
         cdists = np.copy(self.model.geom_margin).flat
         for c in self.model.data.contact:
             cdists[c.geom2] = min(cdists[c.geom2], c.dist)
-        obs = np.concatenate([
-            data.qpos.flat,
-            data.qvel.flat,
-            # data.cdof.flat,
-            data.cinert.flat,
-            data.cvel.flat,
-            # data.cacc.flat,
-            data.qfrc_actuator.flat,
-            data.cfrc_ext.flat,
-            data.qfrc_constraint.flat,
-            cdists,
-            # data.qfrc_bias.flat,
-            # data.qfrc_passive.flat,
-            self.dcom.flat,
-        ])
-        return obs
+        return np.concatenate(
+            [
+                data.qpos.flat,
+                data.qvel.flat,
+                # data.cdof.flat,
+                data.cinert.flat,
+                data.cvel.flat,
+                # data.cacc.flat,
+                data.qfrc_actuator.flat,
+                data.cfrc_ext.flat,
+                data.qfrc_constraint.flat,
+                cdists,
+                # data.qfrc_bias.flat,
+                # data.qfrc_passive.flat,
+                self.dcom.flat,
+            ]
+        )
 
     @property
     def _state(self):

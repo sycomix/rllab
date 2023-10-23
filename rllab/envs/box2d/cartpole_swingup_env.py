@@ -46,11 +46,10 @@ class CartpoleSwingupEnv(Box2DEnv, Serializable):
         yield
         if self.is_current_done():
             yield -100
+        elif abs(self.cart.position[0]) > self.max_reward_cart_pos:
+            yield -1
         else:
-            if abs(self.cart.position[0]) > self.max_reward_cart_pos:
-                yield -1
-            else:
-                yield np.cos(self.pole.angle)
+            yield np.cos(self.pole.angle)
 
     @overrides
     def is_current_done(self):

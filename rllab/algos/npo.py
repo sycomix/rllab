@@ -48,11 +48,10 @@ class NPO(BatchPolopt):
         dist = self.policy.distribution
         old_dist_info_vars = {
             k: ext.new_tensor(
-                'old_%s' % k,
-                ndim=2 + is_recurrent,
-                dtype=theano.config.floatX
-            ) for k in dist.dist_info_keys
-            }
+                f'old_{k}', ndim=2 + is_recurrent, dtype=theano.config.floatX
+            )
+            for k in dist.dist_info_keys
+        }
         old_dist_info_vars_list = [old_dist_info_vars[k] for k in dist.dist_info_keys]
 
         state_info_vars = {
@@ -64,11 +63,7 @@ class NPO(BatchPolopt):
         }
         state_info_vars_list = [state_info_vars[k] for k in self.policy.state_info_keys]
 
-        if is_recurrent:
-            valid_var = TT.matrix('valid')
-        else:
-            valid_var = None
-
+        valid_var = TT.matrix('valid') if is_recurrent else None
         dist_info_vars = self.policy.dist_info_sym(obs_var, state_info_vars)
         kl = dist.kl_sym(old_dist_info_vars, dist_info_vars)
         lr = dist.likelihood_ratio_sym(action_var, old_dist_info_vars, dist_info_vars)

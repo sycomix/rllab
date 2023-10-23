@@ -71,9 +71,7 @@ class ISSampler(BatchSampler):
     def obtain_samples(self, itr):
         # Importance sampling for first self.n_is_pretrain iterations
         if itr < self.n_is_pretrain:
-            paths = self.obtain_is_samples(itr)
-            return paths
-            
+            return self.obtain_is_samples(itr)
         # Alternate between importance sampling and live sampling
         if self._is_itr and not self.skip_is_itrs:
             paths = self.obtain_is_samples(itr)
@@ -105,8 +103,7 @@ class ISSampler(BatchSampler):
         if self.algo.whole_paths:
             return paths
         else:
-            paths_truncated = parallel_sampler.truncate_paths(paths, self.algo.batch_size)
-            return paths_truncated
+            return parallel_sampler.truncate_paths(paths, self.algo.batch_size)
 
     def sample_isweighted_paths(
             self,
@@ -130,12 +127,11 @@ class ISSampler(BatchSampler):
 
         if randomize_draw:
             samples = random.sample(paths, n_samples)
-        elif paths:
-            if n_samples == len(paths):
-                samples = paths
-            else:
-                start = random.randint(0,len(paths)-n_samples)
-                samples = paths[start:start+n_samples]
+        elif n_samples == len(paths):
+            samples = paths
+        else:
+            start = random.randint(0,len(paths)-n_samples)
+            samples = paths[start:start+n_samples]
 
         # make duplicate of samples so we don't permanently alter historical data
         samples = copy.deepcopy(samples)
@@ -155,20 +151,20 @@ class ISSampler(BatchSampler):
             loglike_p = dist1.log_likelihood(path['actions'], agent_infos)
             loglike_hp = dist2.log_likelihood(path['actions'], hist_agent_infos)
             is_ratio = exp(sum(loglike_p) - sum(loglike_hp))
-            
+
             # thresholding knobs
             if max_is_ratio > 0:
                 is_ratio = min(is_ratio, max_is_ratio)
             if ess_threshold > 0:
                 is_weights.append(is_ratio)
-                
+
             # apply importance sampling weight
             path['rewards'] *= is_ratio
 
         if ess_threshold:
             if kong_ess(is_weights) < ess_threshold:
                 return []
-                
+
         return samples
 
 def kong_ess(weights):

@@ -65,7 +65,7 @@ class FirstOrderOptimizer(Serializable):
         updates = OrderedDict([(k, v.astype(k.dtype)) for k, v in updates.items()])
 
         if extra_inputs is None:
-            extra_inputs = list()
+            extra_inputs = []
 
         self._opt_fun = ext.lazydict(
             f_loss=lambda: ext.compile_function(inputs + extra_inputs, loss),
@@ -123,10 +123,10 @@ class FirstOrderOptimizer(Serializable):
                     itr=epoch,
                     elapsed=elapsed,
                 )
-                if self._callback:
-                    self._callback(callback_args)
-                if callback:
-                    callback(**callback_args)
+            if self._callback:
+                self._callback(callback_args)
+            if callback:
+                callback(**callback_args)
 
             if abs(last_loss - new_loss) < self._tolerance:
                 break

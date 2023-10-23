@@ -78,7 +78,7 @@ class Parameterized(object):
             ops.append(self._cached_assign_ops[param])
             feed_dict[self._cached_assign_placeholders[param]] = value.astype(dtype)
             if debug:
-                print("setting value of %s" % param.name)
+                print(f"setting value of {param.name}")
         tf.get_default_session().run(ops, feed_dict=feed_dict)
 
     def flat_to_params(self, flattened_params, **tags):

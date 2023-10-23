@@ -77,32 +77,31 @@ class GaussianMLPPolicy(StochasticPolicy, LayersPowered, Serializable):
 
             if std_network is not None:
                 l_std_param = std_network.output_layer
+            elif adaptive_std:
+                std_network = MLP(
+                    name="std_network",
+                    input_shape=(obs_dim,),
+                    input_layer=mean_network.input_layer,
+                    output_dim=action_dim,
+                    hidden_sizes=std_hidden_sizes,
+                    hidden_nonlinearity=std_hidden_nonlinearity,
+                    output_nonlinearity=None,
+                )
+                l_std_param = std_network.output_layer
             else:
-                if adaptive_std:
-                    std_network = MLP(
-                        name="std_network",
-                        input_shape=(obs_dim,),
-                        input_layer=mean_network.input_layer,
-                        output_dim=action_dim,
-                        hidden_sizes=std_hidden_sizes,
-                        hidden_nonlinearity=std_hidden_nonlinearity,
-                        output_nonlinearity=None,
-                    )
-                    l_std_param = std_network.output_layer
+                if std_parametrization == 'exp':
+                    init_std_param = np.log(init_std)
+                elif std_parametrization == 'softplus':
+                    init_std_param = np.log(np.exp(init_std) - 1)
                 else:
-                    if std_parametrization == 'exp':
-                        init_std_param = np.log(init_std)
-                    elif std_parametrization == 'softplus':
-                        init_std_param = np.log(np.exp(init_std) - 1)
-                    else:
-                        raise NotImplementedError
-                    l_std_param = L.ParamLayer(
-                        mean_network.input_layer,
-                        num_units=action_dim,
-                        param=tf.constant_initializer(init_std_param),
-                        name="output_std_param",
-                        trainable=learn_std,
-                    )
+                    raise NotImplementedError
+                l_std_param = L.ParamLayer(
+                    mean_network.input_layer,
+                    num_units=action_dim,
+                    param=tf.constant_initializer(init_std_param),
+                    name="output_std_param",
+                    trainable=learn_std,
+                )
 
             self.std_parametrization = std_parametrization
 
@@ -183,8 +182,7 @@ class GaussianMLPPolicy(StochasticPolicy, LayersPowered, Serializable):
         new_mean_var, new_log_std_var = new_dist_info_vars["mean"], new_dist_info_vars["log_std"]
         old_mean_var, old_log_std_var = old_dist_info_vars["mean"], old_dist_info_vars["log_std"]
         epsilon_var = (action_var - old_mean_var) / (tf.exp(old_log_std_var) + 1e-8)
-        new_action_var = new_mean_var + epsilon_var * tf.exp(new_log_std_var)
-        return new_action_var
+        return new_mean_var + epsilon_var * tf.exp(new_log_std_var)
 
     def log_diagnostics(self, paths):
         log_stds = np.vstack([path["agent_infos"]["log_std"] for path in paths])

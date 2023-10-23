@@ -29,7 +29,7 @@ def worker_run_reset(G, flags, scope):
         # log the stacktrace at least
         logger.log("oops")
         for k, v in G.__dict__.items():
-            logger.log(str(k) + " : " + str(v))
+            logger.log(f"{str(k)} : {str(v)}")
         assert hasattr(G, 'parallel_vec_envs')
 
     assert scope in G.parallel_vec_envs
@@ -46,7 +46,7 @@ def worker_run_reset(G, flags, scope):
             flat_obs.append(env.reset())
             reset_ids.append(itr_idx)
         ids.append(idx)
-    if len(reset_ids) > 0:
+    if reset_ids:
         ret_arr[reset_ids] = env_template.observation_space.flatten_n(flat_obs)
     return ids, ret_arr
 
@@ -61,7 +61,7 @@ def worker_run_step(G, action_n, scope):
         action = action_n[idx]
         ids.append(idx)
         step_results.append(tuple(env.step(action)))
-    if len(step_results) == 0:
+    if not step_results:
         return None
     obs, rewards, dones, env_infos = list(map(list, list(zip(*step_results))))
     obs = env_template.observation_space.flatten_n(obs)

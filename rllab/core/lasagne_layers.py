@@ -26,8 +26,7 @@ class ParamLayer(L.Layer):
         ndim = input.ndim
         reshaped_param = TT.reshape(self.param, (1,) * (ndim - 1) + (self.num_units,))
         tile_arg = TT.concatenate([input.shape[:-1], [1]])
-        tiled = TT.tile(reshaped_param, tile_arg, ndim=ndim)
-        return tiled
+        return TT.tile(reshaped_param, tile_arg, ndim=ndim)
 
 
 class OpLayer(L.MergeLayer):
@@ -200,20 +199,16 @@ class BatchNormLayer(L.Layer):
         input_mean = input.mean(self.axes)
         input_std = TT.sqrt(input.var(self.axes) + self.epsilon)
 
-        # Decide whether to use the stored averages or mini-batch statistics
-        use_averages = kwargs.get('batch_norm_use_averages',
-                                  deterministic)
-        if use_averages:
+        if use_averages := kwargs.get('batch_norm_use_averages', deterministic):
             mean = self.mean
             std = self.std
         else:
             mean = input_mean
             std = input_std
 
-        # Decide whether to update the stored averages
-        update_averages = kwargs.get('batch_norm_update_averages',
-                                     not deterministic)
-        if update_averages:
+        if update_averages := kwargs.get(
+            'batch_norm_update_averages', not deterministic
+        ):
             # Trick: To update the stored statistics, we create memory-aliased
             # clones of the stored statistics:
             running_mean = theano.clone(self.mean, share_inputs=False)
@@ -242,9 +237,7 @@ class BatchNormLayer(L.Layer):
         mean = mean.dimshuffle(pattern)
         std = std.dimshuffle(pattern)
 
-        # normalize
-        normalized = (input - mean) * (gamma * TT.inv(std)) + beta
-        return normalized
+        return (input - mean) * (gamma * TT.inv(std)) + beta
 
 
 def batch_norm(layer, **kwargs):

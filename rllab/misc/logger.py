@@ -117,7 +117,7 @@ def log(s, with_prefix=True, with_timestamp=True, color=None):
     if with_timestamp:
         now = datetime.datetime.now(dateutil.tz.tzlocal())
         timestamp = now.strftime('%Y-%m-%d %H:%M:%S.%f %Z')
-        out = "%s | %s" % (timestamp, out)
+        out = f"{timestamp} | {out}"
     if color is not None:
         out = colorize(out, color)
     if not _log_tabular_only:
@@ -187,24 +187,25 @@ table_printer = TerminalTablePrinter()
 
 
 def dump_tabular(*args, **kwargs):
+    if len(_tabular) <= 0:
+        return
     wh = kwargs.pop("write_header", None)
-    if len(_tabular) > 0:
-        if _log_tabular_only:
-            table_printer.print_tabular(_tabular)
-        else:
-            for line in tabulate(_tabular).split('\n'):
-                log(line, *args, **kwargs)
-        tabular_dict = dict(_tabular)
-        # Also write to the csv files
-        # This assumes that the keys in each iteration won't change!
-        for tabular_fd in list(_tabular_fds.values()):
-            writer = csv.DictWriter(tabular_fd, fieldnames=list(tabular_dict.keys()))
-            if wh or (wh is None and tabular_fd not in _tabular_header_written):
-                writer.writeheader()
-                _tabular_header_written.add(tabular_fd)
-            writer.writerow(tabular_dict)
-            tabular_fd.flush()
-        del _tabular[:]
+    if _log_tabular_only:
+        table_printer.print_tabular(_tabular)
+    else:
+        for line in tabulate(_tabular).split('\n'):
+            log(line, *args, **kwargs)
+    tabular_dict = dict(_tabular)
+    # Also write to the csv files
+    # This assumes that the keys in each iteration won't change!
+    for tabular_fd in list(_tabular_fds.values()):
+        writer = csv.DictWriter(tabular_fd, fieldnames=list(tabular_dict.keys()))
+        if wh or (wh is None and tabular_fd not in _tabular_header_written):
+            writer.writeheader()
+            _tabular_header_written.add(tabular_fd)
+        writer.writerow(tabular_dict)
+        tabular_fd.flush()
+    del _tabular[:]
 
 
 def pop_prefix():
@@ -215,29 +216,36 @@ def pop_prefix():
 
 def save_itr_params(itr, params):
     if _snapshot_dir:
-        if _snapshot_mode == 'all':
+        if (
+            _snapshot_mode != 'all'
+            and _snapshot_mode != 'last'
+            and _snapshot_mode != 'none'
+            and _snapshot_mode == "gap"
+            and itr % _snapshot_gap == 0
+            or _snapshot_mode == 'all'
+        ):
             file_name = osp.join(_snapshot_dir, 'itr_%d.pkl' % itr)
             joblib.dump(params, file_name, compress=3)
+        elif (
+            _snapshot_mode != 'last'
+            and _snapshot_mode != 'none'
+            and _snapshot_mode == "gap"
+        ):
+            pass
         elif _snapshot_mode == 'last':
             # override previous params
             file_name = osp.join(_snapshot_dir, 'params.pkl')
             joblib.dump(params, file_name, compress=3)
-        elif _snapshot_mode == "gap":
-            if itr % _snapshot_gap == 0:
-                file_name = osp.join(_snapshot_dir, 'itr_%d.pkl' % itr)
-                joblib.dump(params, file_name, compress=3)
-        elif _snapshot_mode == 'none':
-            pass
-        else:
+        elif _snapshot_mode != 'none':
             raise NotImplementedError
 
 
 def log_parameters(log_file, args, classes):
-    log_params = {}
-    for param_name, param_value in args.__dict__.items():
-        if any([param_name.startswith(x) for x in list(classes.keys())]):
-            continue
-        log_params[param_name] = param_value
+    log_params = {
+        param_name: param_value
+        for param_name, param_value in args.__dict__.items()
+        if not any(param_name.startswith(x) for x in list(classes.keys()))
+    }
     for name, cls in classes.items():
         if isinstance(cls, type):
             params = get_all_parameters(cls, args)
@@ -245,7 +253,7 @@ def log_parameters(log_file, args, classes):
             log_params[name] = params
         else:
             log_params[name] = getattr(cls, "__kwargs", dict())
-            log_params[name]["_name"] = cls.__module__ + "." + cls.__class__.__name__
+            log_params[name]["_name"] = f"{cls.__module__}.{cls.__class__.__name__}"
     mkdir_p(os.path.dirname(log_file))
     with open(log_file, "w") as f:
         json.dump(log_params, f, indent=2, sort_keys=True)
@@ -258,7 +266,9 @@ def stub_to_json(stub_sth):
         data = dict()
         for k, v in stub_sth.kwargs.items():
             data[k] = stub_to_json(v)
-        data["_name"] = stub_sth.proxy_class.__module__ + "." + stub_sth.proxy_class.__name__
+        data[
+            "_name"
+        ] = f"{stub_sth.proxy_class.__module__}.{stub_sth.proxy_class.__name__}"
         return data
     elif isinstance(stub_sth, instrument.StubAttr):
         return dict(
@@ -275,14 +285,14 @@ def stub_to_json(stub_sth):
     elif isinstance(stub_sth, instrument.BinaryOp):
         return "binary_op"
     elif isinstance(stub_sth, instrument.StubClass):
-        return stub_sth.proxy_class.__module__ + "." + stub_sth.proxy_class.__name__
+        return f"{stub_sth.proxy_class.__module__}.{stub_sth.proxy_class.__name__}"
     elif isinstance(stub_sth, dict):
         return {stub_to_json(k): stub_to_json(v) for k, v in stub_sth.items()}
     elif isinstance(stub_sth, (list, tuple)):
         return list(map(stub_to_json, stub_sth))
     elif type(stub_sth) == type(lambda: None):
         if stub_sth.__module__ is not None:
-            return stub_sth.__module__ + "." + stub_sth.__name__
+            return f"{stub_sth.__module__}.{stub_sth.__name__}"
         return stub_sth.__name__
     elif "theano" in str(type(stub_sth)):
         return repr(stub_sth)
@@ -292,16 +302,14 @@ def stub_to_json(stub_sth):
 class MyEncoder(json.JSONEncoder):
     def default(self, o):
         if isinstance(o, type):
-            return {'$class': o.__module__ + "." + o.__name__}
+            return {'$class': f"{o.__module__}.{o.__name__}"}
         elif isinstance(o, Enum):
-            return {'$enum': o.__module__ + "." + o.__class__.__name__ + '.' + o.name}
+            return {'$enum': f"{o.__module__}.{o.__class__.__name__}.{o.name}"}
         return json.JSONEncoder.default(self, o)
 
 
 def log_parameters_lite(log_file, args):
-    log_params = {}
-    for param_name, param_value in args.__dict__.items():
-        log_params[param_name] = param_value
+    log_params = dict(args.__dict__.items())
     if args.args_data is not None:
         stub_method = pickle.loads(base64.b64decode(args.args_data))
         method_args = stub_method.kwargs
@@ -335,14 +343,14 @@ def record_tabular_misc_stat(key, values, placement='back'):
         prefix = key
         suffix = ""
     if len(values) > 0:
-        record_tabular(prefix + "Average" + suffix, np.average(values))
-        record_tabular(prefix + "Std" + suffix, np.std(values))
-        record_tabular(prefix + "Median" + suffix, np.median(values))
-        record_tabular(prefix + "Min" + suffix, np.min(values))
-        record_tabular(prefix + "Max" + suffix, np.max(values))
+        record_tabular(f"{prefix}Average{suffix}", np.average(values))
+        record_tabular(f"{prefix}Std{suffix}", np.std(values))
+        record_tabular(f"{prefix}Median{suffix}", np.median(values))
+        record_tabular(f"{prefix}Min{suffix}", np.min(values))
+        record_tabular(f"{prefix}Max{suffix}", np.max(values))
     else:
-        record_tabular(prefix + "Average" + suffix, np.nan)
-        record_tabular(prefix + "Std" + suffix, np.nan)
-        record_tabular(prefix + "Median" + suffix, np.nan)
-        record_tabular(prefix + "Min" + suffix, np.nan)
-        record_tabular(prefix + "Max" + suffix, np.nan)
+        record_tabular(f"{prefix}Average{suffix}", np.nan)
+        record_tabular(f"{prefix}Std{suffix}", np.nan)
+        record_tabular(f"{prefix}Median{suffix}", np.nan)
+        record_tabular(f"{prefix}Min{suffix}", np.nan)
+        record_tabular(f"{prefix}Max{suffix}", np.nan)

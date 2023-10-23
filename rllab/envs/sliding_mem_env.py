@@ -25,7 +25,7 @@ class SlidingMemEnv(ProxyEnv, Serializable):
     def reset_buffer(self, new_):
         assert self.axis == 0
         self.buffer = np.zeros(self.observation_space.shape, dtype=np.float32)
-        self.buffer[0:] = new_
+        self.buffer[:] = new_
 
     def add_to_buffer(self, new_):
         assert self.axis == 0

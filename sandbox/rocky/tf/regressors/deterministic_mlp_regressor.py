@@ -18,7 +18,7 @@ from rllab.core.serializable import Serializable
 from rllab.misc import ext
 from rllab.misc import logger
 
-NONE = list()
+NONE = []
 
 
 class DeterministicMLPRegressor(LayersPowered, Serializable):

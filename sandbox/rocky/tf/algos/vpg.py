@@ -58,9 +58,13 @@ class VPG(BatchPolopt, Serializable):
         dist = self.policy.distribution
 
         old_dist_info_vars = {
-            k: tf.placeholder(tf.float32, shape=[None] * (1 + is_recurrent) + list(shape), name='old_%s' % k)
+            k: tf.placeholder(
+                tf.float32,
+                shape=[None] * (1 + is_recurrent) + list(shape),
+                name=f'old_{k}',
+            )
             for k, shape in dist.dist_info_specs
-            }
+        }
         old_dist_info_vars_list = [old_dist_info_vars[k] for k in dist.dist_info_keys]
 
         state_info_vars = {

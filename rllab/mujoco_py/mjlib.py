@@ -11,7 +11,7 @@ elif sys.platform.startswith("linux"):
 elif sys.platform.startswith("win"):
     libfile = osp.abspath(osp.join(osp.dirname(__file__),"../../vendor/mujoco/mujoco.lib"))
 else:
-    raise RuntimeError("unrecognized platform %s"%sys.platform)
+    raise RuntimeError(f"unrecognized platform {sys.platform}")
 
 
 mjlib = cdll.LoadLibrary(libfile)

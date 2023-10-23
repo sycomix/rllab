@@ -16,8 +16,7 @@ def register_license(file_path):
     this does not check the return code, per usage example at simulate.cpp
     and test.cpp.
     """
-    result = mjlib.mj_activate(file_path)
-    return result
+    return mjlib.mj_activate(file_path)
 
 
 class dict2(dict):

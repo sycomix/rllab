@@ -58,10 +58,7 @@ class MjViewer(object):
 
     def set_model(self, model):
         self.model = model
-        if model:
-            self.data = model.data
-        else:
-            self.data = None
+        self.data = model.data if model else None
         if self.running:
             if model:
                 mjlib.mjr_makeContext(model.ptr, byref(self.con), 150)
@@ -150,7 +147,7 @@ class MjViewer(object):
         if fbo_status != gl.GL_FRAMEBUFFER_COMPLETE:
             gl.glDeleteFramebuffers([fbo])
             glfw.terminate()
-            raise Exception('Framebuffer failed status check: %s' % fbo_status)
+            raise Exception(f'Framebuffer failed status check: {fbo_status}')
 
         self._fbo = fbo
         self._rbo = rbo

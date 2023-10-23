@@ -52,10 +52,7 @@ def explained_variance_1d(ypred, y):
     assert y.ndim == 1 and ypred.ndim == 1
     vary = np.var(y)
     if np.isclose(vary, 0):
-        if np.var(ypred) > 0:
-            return 0
-        else:
-            return 1
+        return 0 if np.var(ypred) > 0 else 1
     return 1 - np.var(y - ypred) / (vary + 1e-8)
 
 
@@ -81,9 +78,7 @@ def from_onehot(v):
 
 
 def from_onehot_n(v):
-    if len(v) == 0:
-        return []
-    return np.nonzero(v)[1]
+    return [] if len(v) == 0 else np.nonzero(v)[1]
 
 
 def normalize_updates(old_mean, old_std, new_mean, new_std, old_W, old_b):

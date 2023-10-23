@@ -121,11 +121,7 @@ class REPS(BatchPolopt, Serializable):
         loss_grad = TT.grad(
             loss, self.policy.get_params(trainable=True))
 
-        if is_recurrent:
-            recurrent_vars = [valid_var]
-        else:
-            recurrent_vars = []
-
+        recurrent_vars = [valid_var] if is_recurrent else []
         input = [rewards, obs_var, feat_diff,
                  action_var] + state_info_vars_list + recurrent_vars + [param_eta, param_v]
         # if is_recurrent:
@@ -142,11 +138,10 @@ class REPS(BatchPolopt, Serializable):
         # Debug prints
         old_dist_info_vars = {
             k: ext.new_tensor(
-                'old_%s' % k,
-                ndim=2 + is_recurrent,
-                dtype=theano.config.floatX
-            ) for k in dist.dist_info_keys
-            }
+                f'old_{k}', ndim=2 + is_recurrent, dtype=theano.config.floatX
+            )
+            for k in dist.dist_info_keys
+        }
         old_dist_info_vars_list = [old_dist_info_vars[k] for k in dist.dist_info_keys]
 
         if is_recurrent:
@@ -163,7 +158,7 @@ class REPS(BatchPolopt, Serializable):
         # Symbolic dual
         if is_recurrent:
             dual = param_eta * self.epsilon + \
-                   param_eta * TT.log(
+                       param_eta * TT.log(
                        TT.sum(
                            TT.exp(
                                delta_v / param_eta - TT.max(delta_v / param_eta)
@@ -172,7 +167,7 @@ class REPS(BatchPolopt, Serializable):
                    ) + param_eta * TT.max(delta_v / param_eta)
         else:
             dual = param_eta * self.epsilon + \
-                   param_eta * TT.log(
+                       param_eta * TT.log(
                        TT.mean(
                            TT.exp(
                                delta_v / param_eta - TT.max(delta_v / param_eta)
@@ -181,7 +176,7 @@ class REPS(BatchPolopt, Serializable):
                    ) + param_eta * TT.max(delta_v / param_eta)
         # Add L2 regularization.
         dual += self.L2_reg_dual * \
-                (TT.square(param_eta) + TT.square(1 / param_eta))
+                    (TT.square(param_eta) + TT.square(1 / param_eta))
 
         # Symbolic dual gradient
         dual_grad = TT.grad(cost=dual, wrt=[param_eta, param_v])
@@ -220,10 +215,7 @@ class REPS(BatchPolopt, Serializable):
         agent_infos = samples_data["agent_infos"]
         state_info_list = [agent_infos[k] for k in self.policy.state_info_keys]
         dist_info_list = [agent_infos[k] for k in self.policy.distribution.dist_info_keys]
-        if self.policy.recurrent:
-            recurrent_vals = [samples_data["valids"]]
-        else:
-            recurrent_vals = []
+        recurrent_vals = [samples_data["valids"]] if self.policy.recurrent else []
         # Compute sample Bellman error.
         feat_diff = []
         for path in samples_data['paths']:
@@ -231,7 +223,9 @@ class REPS(BatchPolopt, Serializable):
             feats = np.vstack([feats, np.zeros(feats.shape[1])])
             feat_diff.append(feats[1:] - feats[:-1])
         if self.policy.recurrent:
-            max_path_length = max([len(path["advantages"]) for path in samples_data["paths"]])
+            max_path_length = max(
+                len(path["advantages"]) for path in samples_data["paths"]
+            )
             # pad feature diffs
             feat_diff = np.array([tensor_utils.pad_tensor(fd, max_path_length) for fd in feat_diff])
         else:
